@@ -219,43 +219,93 @@ QueueEase
 
 # Database Design
 
-## Users
+## 1. Users
+
+Stores customer and admin account information.
 
 | Field | Description |
-|--------|-------------|
+|------|-------------|
 | userID | Primary Key |
-| fullName | Customer Name |
-| email | Email Address |
-| password | Encrypted Password |
-| phone | Contact Number |
+| fullName | User's full name |
+| email | User email |
+| password | Encrypted password |
+| phone | Contact number |
 | role | Customer / Admin |
 
 ---
 
-## Services
+## 2. Services
+
+Stores the services offered by the business.
 
 | Field | Description |
-|--------|-------------|
+|------|-------------|
 | serviceID | Primary Key |
-| serviceName | Name of Service |
-| description | Service Description |
-| duration | Appointment Duration |
-| price | Service Price |
+| serviceName | Name of service |
+| description | Service details |
+| duration | Duration of service |
+| price | Service price |
+| status | Available / Unavailable |
 
 ---
 
-## Appointments
+## 3. Appointments
+
+Stores customer appointment bookings.
 
 | Field | Description |
-|--------|-------------|
+|------|-------------|
 | appointmentID | Primary Key |
 | userID | Foreign Key |
 | serviceID | Foreign Key |
-| appointmentDate | Appointment Date |
-| appointmentTime | Appointment Time |
+| appointmentDate | Appointment date |
+| appointmentTime | Appointment time |
 | status | Pending / Approved / Completed / Cancelled |
+| remarks | Additional notes |
 
 ---
+
+## 4. Queue
+
+Stores queue numbers and walk-in customer status.
+
+| Field | Description |
+|------|-------------|
+| queueID | Primary Key |
+| appointmentID | Foreign Key |
+| queueNumber | Customer queue number |
+| queueStatus | Waiting / Serving / Completed / Cancelled |
+| checkInTime | Time customer checked in |
+
+---
+
+## 5. Staff
+
+Stores staff information and staff availability.
+
+| Field | Description |
+|------|-------------|
+| staffID | Primary Key |
+| fullName | Staff name |
+| email | Staff email |
+| phone | Staff contact |
+| position | Staff role or job title |
+| availabilityStatus | Available / Unavailable |
+
+---
+
+## 6. Feedback
+
+Stores customer feedback after appointments.
+
+| Field | Description |
+|------|-------------|
+| feedbackID | Primary Key |
+| appointmentID | Foreign Key |
+| userID | Foreign Key |
+| rating | Customer rating |
+| comments | Customer feedback |
+| submittedDate | Date feedback was submitted |
 
 # User Roles
 
