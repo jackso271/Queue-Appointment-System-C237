@@ -426,11 +426,11 @@ http://localhost:3000
 
 | Name | Feature |
 |------|----------|
-| Member 1 | Authentication |
+| Ming Hao | Authentication |
 | MM | Appointment Booking |
-| Member 3 | Service Management |
-| Member 4 | Queue Management |
-| Member 5 | User Management |
+| Wei Jin | Service Management |
+| Jason | Queue Management |
+| Ray 5 | User Management |
 | Member 6 | Dashboard & Reports |
 
 ---
