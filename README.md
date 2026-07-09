@@ -431,7 +431,7 @@ http://localhost:3000
 | Wei Jin | Service Management |
 | Jason | Queue Management |
 | Ray 5 | User Management |
-| Member 6 | Dashboard & Reports |
+| Kay Yi | Dashboard & Reports |
 
 ---
 
