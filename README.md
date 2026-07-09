@@ -427,7 +427,7 @@ http://localhost:3000
 | Name | Feature |
 |------|----------|
 | Member 1 | Authentication |
-| Member 2 | Appointment Booking |
+| MM | Appointment Booking |
 | Member 3 | Service Management |
 | Member 4 | Queue Management |
 | Member 5 | User Management |
