@@ -102,6 +102,206 @@ QueueEase aims to:
 
 ---
 
+# Project Folder Structure
+
+The QueueEase project follows a modular structure to keep the application organised and make it easier for team members to work on separate features.
+
+```text
+Queue-Appointment-System-C237/
+│
+├── config/
+│   └── database.js
+│
+├── controllers/
+│   ├── authController.js
+│   ├── appointmentController.js
+│   ├── serviceController.js
+│   ├── queueController.js
+│   ├── staffController.js
+│   ├── userController.js
+│   ├── feedbackController.js
+│   └── dashboardController.js
+│
+├── middleware/
+│   ├── authMiddleware.js
+│   ├── roleMiddleware.js
+│   └── validationMiddleware.js
+│
+├── models/
+│   ├── userModel.js
+│   ├── appointmentModel.js
+│   ├── serviceModel.js
+│   ├── queueModel.js
+│   ├── staffModel.js
+│   └── feedbackModel.js
+│
+├── routes/
+│   ├── authRoutes.js
+│   ├── appointmentRoutes.js
+│   ├── serviceRoutes.js
+│   ├── queueRoutes.js
+│   ├── staffRoutes.js
+│   ├── userRoutes.js
+│   ├── feedbackRoutes.js
+│   └── adminRoutes.js
+│
+├── views/
+│   ├── auth/
+│   │   ├── login.ejs
+│   │   └── register.ejs
+│   │
+│   ├── appointments/
+│   │   ├── index.ejs
+│   │   ├── create.ejs
+│   │   ├── details.ejs
+│   │   └── edit.ejs
+│   │
+│   ├── services/
+│   │   ├── index.ejs
+│   │   ├── create.ejs
+│   │   ├── details.ejs
+│   │   └── edit.ejs
+│   │
+│   ├── queue/
+│   │   ├── index.ejs
+│   │   ├── customer-status.ejs
+│   │   └── admin-queue.ejs
+│   │
+│   ├── staff/
+│   │   ├── index.ejs
+│   │   ├── create.ejs
+│   │   ├── details.ejs
+│   │   └── edit.ejs
+│   │
+│   ├── users/
+│   │   ├── index.ejs
+│   │   ├── profile.ejs
+│   │   └── edit.ejs
+│   │
+│   ├── feedback/
+│   │   ├── index.ejs
+│   │   ├── create.ejs
+│   │   └── edit.ejs
+│   │
+│   ├── admin/
+│   │   ├── dashboard.ejs
+│   │   └── reports.ejs
+│   │
+│   ├── partials/
+│   │   ├── header.ejs
+│   │   ├── navbar.ejs
+│   │   ├── footer.ejs
+│   │   └── messages.ejs
+│   │
+│   ├── errors/
+│   │   ├── 403.ejs
+│   │   ├── 404.ejs
+│   │   └── 500.ejs
+│   │
+│   └── index.ejs
+│
+├── public/
+│   ├── css/
+│   │   └── style.css
+│   │
+│   ├── js/
+│   │   ├── main.js
+│   │   ├── appointment.js
+│   │   └── queue.js
+│   │
+│   └── images/
+│
+├── database/
+│   ├── queueease.sql
+│   └── seed.sql
+│
+├── .env
+├── .env.example
+├── .gitignore
+├── app.js
+├── package.json
+├── package-lock.json
+└── README.md
+```
+
+## Folder Explanation
+
+| Folder or File | Purpose |
+|---|---|
+| `config/` | Stores application configuration such as the MySQL database connection |
+| `controllers/` | Contains server-side business logic for each feature |
+| `middleware/` | Contains authentication, authorization and validation checks |
+| `models/` | Contains MySQL queries and database interaction functions |
+| `routes/` | Defines the Express routes for each module |
+| `views/` | Contains all EJS pages displayed to users |
+| `views/partials/` | Contains reusable EJS components such as the navigation bar and footer |
+| `views/errors/` | Contains custom error pages |
+| `public/css/` | Contains application stylesheets |
+| `public/js/` | Contains browser-side JavaScript |
+| `public/images/` | Contains logos, icons and other images |
+| `database/` | Contains the MySQL schema and optional sample data |
+| `.env` | Stores private environment variables and must not be committed |
+| `.env.example` | Shows the environment variables required to run the project |
+| `app.js` | Main application entry point |
+| `package.json` | Stores dependencies, project details and npm scripts |
+| `README.md` | Contains the project documentation |
+
+## Application Architecture
+
+QueueEase follows a simplified MVC-style structure:
+
+```text
+User Request
+     ↓
+Route
+     ↓
+Middleware
+     ↓
+Controller
+     ↓
+Model / SQL Query
+     ↓
+MySQL Database
+     ↓
+Controller Response
+     ↓
+EJS View or Redirect
+```
+
+### Example
+
+When a customer books an appointment:
+
+```text
+Customer submits appointment form
+                ↓
+appointmentRoutes.js
+                ↓
+authMiddleware.js
+                ↓
+appointmentController.js
+                ↓
+appointmentModel.js
+                ↓
+Appointments table in MySQL
+                ↓
+Customer is redirected to appointment history
+```
+
+## Shared Files
+
+Some files will be edited by multiple team members and should be coordinated carefully:
+
+- `app.js`
+- `database/queueease.sql`
+- `views/partials/navbar.ejs`
+- `public/css/style.css`
+- `package.json`
+
+Each member should mainly work inside their assigned controller, model, route and view folders to reduce merge conflicts.
+
+---
+
 # Why QueueEase Was Chosen
 
 QueueEase was chosen because appointment and queue management is a common real-world problem experienced by many service businesses.
