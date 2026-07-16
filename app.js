@@ -9,4 +9,4 @@ const db = mysql.createConnection({
     ssl: {
         rejectUnauthorized: true
     }
-});
+});x
