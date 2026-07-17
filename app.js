@@ -1,12 +1,26 @@
-// Database connection
-const db = mysql.createConnection({
-    host: 'c237-eaint-mysql.mysql.database.azure.com',
-    user: 'c237_001',
-    password: 'c237001@2026!',
-    database: 'c237_001_teamaplus',
-    //It tells your app to talk to the Azure database using SSL, which is required by Azure for secure connections.
-    //Which Azure requires to use SSL for secure connections to the database. The rejectUnauthorized: true option ensures that the SSL certificate is verified.
-    ssl: {
-        rejectUnauthorized: true
-    }
-});x
+require('dotenv').config();
+
+const express = require('express');
+const path = require('path');
+const queueRoutes = require('./routes/queueRoutes');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/', queueRoutes);
+
+app.get('/', (req, res) => {
+    res.redirect('/queue/admin');
+});
+
+app.listen(PORT, () => {
+    console.log(`QueueEase server is running on http://localhost:${PORT}`);
+});
+
