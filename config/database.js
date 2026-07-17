@@ -3,7 +3,7 @@ require('dotenv').config();
 const mysql = require('mysql2/promise');
 
 const sslOption = process.env.DB_SSL === 'true'
-    ? { rejectUnauthorized: true }
+    ? { rejectUnauthorized: false }
     : undefined;
 
 const pool = mysql.createPool({
