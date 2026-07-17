@@ -53,7 +53,7 @@ exports.displayServices = (req, res) => {
             );
         }
 
-        return res.render('serviceManagement/serviceList', {
+        return res.render('serviceList', {
             services,
             successMessage: req.query.success || null
         });
@@ -61,7 +61,7 @@ exports.displayServices = (req, res) => {
 };
 
 exports.displayAddService = (req, res) => {
-    return res.render('serviceManagement/addService', {
+    return res.render('addService', {
         errorMessage: null,
         formData: {
             serviceName: '',
@@ -78,7 +78,7 @@ exports.createService = (req, res) => {
 
     if (validation.error) {
         return res.status(400).render(
-            'serviceManagement/addService',
+            'addService',
             {
                 errorMessage: validation.error,
                 formData: req.body
@@ -98,7 +98,7 @@ exports.createService = (req, res) => {
                         : 'Unable to create the service.';
 
                 return res.status(500).render(
-                    'serviceManagement/addService',
+                    'addService',
                     {
                         errorMessage: message,
                         formData: req.body
@@ -136,7 +136,7 @@ exports.displayServiceDetails = (req, res) => {
             }
 
             return res.render(
-                'serviceManagement/serviceDetails',
+                'serviceDetails',
                 {
                     service: services[0]
                 }
@@ -167,7 +167,7 @@ exports.displayEditService = (req, res) => {
                 return res.status(404).send('Service not found.');
             }
 
-            return res.render('serviceManagement/editService', {
+            return res.render('editService', {
                 service: services[0],
                 errorMessage: null
             });
@@ -185,7 +185,7 @@ exports.updateService = (req, res) => {
 
     if (validation.error) {
         return res.status(400).render(
-            'serviceManagement/editService',
+            'editService',
             {
                 errorMessage: validation.error,
                 service: {
@@ -209,7 +209,7 @@ exports.updateService = (req, res) => {
                         : 'Unable to update the service.';
 
                 return res.status(500).render(
-                    'serviceManagement/editService',
+                    'editService',
                     {
                         errorMessage: message,
                         service: {
