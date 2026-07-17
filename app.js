@@ -4,6 +4,8 @@ const express = require('express');
 const path = require('path');
 
 const queueRoutes = require('./routes/queueRoutes');
+const staffRoutes = require('./routes/staffRoutes');
+
 const serviceManagementRoutes =
     require('./routes/serviceManagementRoutes');
 
@@ -18,6 +20,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', queueRoutes);
+app.use('/staff', staffRoutes);
 
 app.use(
     '/service-management',
