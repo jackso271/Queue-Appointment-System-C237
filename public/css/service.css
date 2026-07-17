@@ -1,0 +1,174 @@
+body.service-page {
+    min-height: 100vh;
+    background: #f4f6f9;
+    color: #212529;
+}
+
+.service-hero,
+.service-form-card,
+.service-details-card,
+.service-table-card,
+.service-summary-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.service-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 30px;
+}
+
+.service-label {
+    color: #0d6efd;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.service-summary-card {
+    height: 100%;
+    padding: 24px;
+}
+
+.service-summary-card h2 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.summary-title {
+    margin-bottom: 8px;
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.service-table-card {
+    overflow: hidden;
+}
+
+.service-table-card thead th {
+    padding: 16px;
+    background: #f8f9fa;
+    color: #495057;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.service-table-card tbody td {
+    padding: 16px;
+    vertical-align: middle;
+}
+
+.service-table-card tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.service-table-card tbody tr:hover {
+    background: #f8fbff;
+}
+
+.service-description {
+    max-width: 320px;
+}
+
+.service-status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.status-available {
+    color: #146c43;
+    background: #d1e7dd;
+}
+
+.status-unavailable {
+    color: #842029;
+    background: #f8d7da;
+}
+
+.service-form-card,
+.service-details-card {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 32px;
+}
+
+.service-form-card .form-label {
+    font-weight: 600;
+}
+
+.service-form-card .form-control,
+.service-form-card .form-select {
+    padding: 10px 12px;
+    border-radius: 10px;
+}
+
+.service-form-card .form-control:focus,
+.service-form-card .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+.service-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.service-detail-item {
+    padding: 20px;
+    background: #f8f9fa;
+    border: 1px solid #edf0f2;
+    border-radius: 12px;
+}
+
+.detail-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.btn {
+    border-radius: 9px;
+}
+
+@media (max-width: 768px) {
+    .service-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 22px;
+    }
+
+    .service-hero .btn {
+        width: 100%;
+    }
+
+    .service-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .service-form-card,
+    .service-details-card {
+        padding: 22px;
+    }
+
+    .service-table-card tbody td {
+        white-space: nowrap;
+    }
+}
