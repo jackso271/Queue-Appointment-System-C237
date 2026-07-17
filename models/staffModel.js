@@ -70,37 +70,6 @@ async function findById(staffID) {
 }
 
 /**
- * Checks whether a staff email already exists.
- * Input: email and optional staffID to exclude.
- * Output: true when the email exists, otherwise false.
- */
-async function emailExists(email, excludedStaffID = null) {
-    let sql = `
-        SELECT staffID
-        FROM staff
-        WHERE email = ?
-    `;
-
-    const values = [email];
-
-    // Ignore the current staff member when editing.
-    if (excludedStaffID) {
-        sql += `
-            AND staffID != ?
-        `;
-
-        values.push(excludedStaffID);
-    }
-
-    sql += `
-        LIMIT 1
-    `;
-
-    const [rows] = await db.execute(sql, values);
-    return rows.length > 0;
-}
-
-/**
  * Creates a new staff record.
  * Input: staff form data.
  * Output: the inserted staff record ID.
