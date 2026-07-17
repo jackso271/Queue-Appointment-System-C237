@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - QueueEase</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <%
+        const status = queueEntry ? queueEntry.queueStatus : null;
+        const statusMessages = {
+            Waiting: 'Please wait. You will be called soon.',
+            Serving: 'It is your turn. Please proceed to the service counter.',
+            Completed: 'Your appointment has been completed.',
+            Cancelled: 'Your queue entry has been cancelled.'
+        };
+        const getStatusClass = (value) => {
+            if (value === 'Waiting') return 'warning';
+            if (value === 'Serving') return 'primary';
+            if (value === 'Completed') return 'success';
+            if (value === 'Cancelled') return 'secondary';
+            return 'dark';
+        };
+        const formatQueueNumber = (value) => `Q${String(value || 0).padStart(3, '0')}`;
+        const formatDate = (value) => {
+            if (!value) return 'Not set';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString('en-SG', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+        };
+        const formatTime = (value) => {
+            if (!value) return 'Not set';
+            if (typeof value === 'string') return value.slice(0, 5);
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+            return date.toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' });
+        };
+        const formatDateTime = (value) => {
+            if (!value) return 'Not set';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return `${formatDate(value)} ${formatTime(value)}`;
+        };
+        const steps = ['Checked In', 'Waiting', 'Serving', 'Completed'];
+        const completedSteps = {
+            Waiting: ['Checked In', 'Waiting'],
+            Serving: ['Checked In', 'Waiting', 'Serving'],
+            Completed: ['Checked In', 'Waiting', 'Serving', 'Completed'],
+            Cancelled: ['Checked In']
+        };
+    %>
+
+    <main class="container py-4 py-lg-5">
+        <!-- Customer page heading -->
+        <section class="queue-hero bg-white border rounded-3 shadow-sm p-4 mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                <div>
+                    <p class="text-uppercase text-primary fw-semibold small mb-2">QueueEase</p>
+                    <h1 class="h2 mb-2">My Queue Status</h1>
+                    <p class="text-muted mb-0">Track your current queue number and appointment progress.</p>
+                </div>
+                <div class="align-self-md-center">
+                    <a href="/appointments" class="btn btn-outline-secondary">Back to Appointments</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page messages -->
+        <% if (success) { %>
+            <div class="alert alert-success" role="alert"><%= success %></div>
+        <% } %>
+
+        <% if (error) { %>
+            <div class="alert alert-danger" role="alert"><%= error %></div>
+        <% } %>
+
+        <% if (queueEntry) { %>
+            <!-- Queue status card -->
+            <section class="card border-0 shadow-sm queue-status-card">
+                <div class="card-body p-4 p-lg-5">
+                    <div class="row g-4 align-items-center">
+                        <div class="col-lg-4 text-center">
+                            <p class="text-muted mb-2">Your Queue Number</p>
+                            <div class="queue-number-display text-primary"><%= formatQueueNumber(queueEntry.queueNumber) %></div>
+                            <span class="badge text-bg-<%= getStatusClass(status) %> fs-6 mt-2"><%= status || 'Unknown' %></span>
+                        </div>
+
+                        <div class="col-lg-8">
+                            <div class="alert alert-<%= getStatusClass(status) %> mb-4" role="status">
+                                <%= statusMessages[status] || 'Your queue status is being updated.' %>
+                            </div>
+
+                            <!-- Appointment details -->
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <div class="queue-detail-box">
+                                        <span class="text-muted small">Service</span>
+                                        <strong><%= queueEntry.serviceName || 'Service unavailable' %></strong>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="queue-detail-box">
+                                        <span class="text-muted small">Staff</span>
+                                        <strong><%= queueEntry.staffName || 'Not assigned yet' %></strong>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="queue-detail-box">
+                                        <span class="text-muted small">Appointment Date</span>
+                                        <strong><%= formatDate(queueEntry.appointmentDate) %></strong>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="queue-detail-box">
+                                        <span class="text-muted small">Appointment Time</span>
+                                        <strong><%= formatTime(queueEntry.appointmentTime) %></strong>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="queue-detail-box">
+                                        <span class="text-muted small">Check-in Time</span>
+                                        <strong><%= formatDateTime(queueEntry.checkInTime) %></strong>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="queue-detail-box">
+                                        <span class="text-muted small">Customers Ahead</span>
+                                        <strong><%= customersAhead || 0 %></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Queue progress display -->
+                    <div class="queue-progress mt-5" aria-label="Queue progress">
+                        <% steps.forEach((step, index) => { %>
+                            <% const isComplete = status && completedSteps[status] && completedSteps[status].includes(step); %>
+                            <div class="queue-status-step <%= isComplete ? 'is-complete' : '' %>">
+                                <span class="queue-status-step-number"><%= index + 1 %></span>
+                                <span class="queue-status-step-label"><%= step %></span>
+                            </div>
+                        <% }) %>
+                    </div>
+                </div>
+            </section>
+        <% } else { %>
+            <!-- Empty state -->
+            <section class="queue-empty-state bg-white border rounded-3 shadow-sm text-center p-5">
+                <h2 class="h4 mb-2">No queue record found</h2>
+                <p class="text-muted mb-4">Your queue status will appear here after you check in for an approved appointment.</p>
+                <a href="/appointments" class="btn btn-primary">Back to Appointments</a>
+            </section>
+        <% } %>
+    </main>
+</body>
+</html>
+
