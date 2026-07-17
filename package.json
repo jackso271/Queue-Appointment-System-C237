@@ -4,7 +4,9 @@
   "description": "QueueEase is a web-based queue and appointment management application developed for the Republic Polytechnic C237 Software Application Development CA2 project.",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node testing.js",
+    "dev": "node --watch testing.js"
   },
   "repository": {
     "type": "git",
@@ -20,6 +22,7 @@
   "homepage": "https://github.com/jackso271/Queue-Appointment-System-C237#readme",
   "dependencies": {
     "connect-flash": "^0.1.1",
+    "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
