@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const userModel = require('../models/userModel');
 
 async function showLoginPage(req, res) {
-  return res.render('users/login', {
+  return res.render('auth/login', {
     title: 'Login',
     error: req.query.error || null,
     success: req.query.success || null
@@ -10,7 +10,7 @@ async function showLoginPage(req, res) {
 }
 
 async function showRegisterPage(req, res) {
-  return res.render('users/register', {
+  return res.render('auth/register', {
     title: 'Register',
     error: req.query.error || null
   });
