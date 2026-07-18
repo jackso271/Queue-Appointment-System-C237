@@ -1,34 +1,27 @@
 const mysql = require('mysql2');
 
-const db = mysql.createConnection({
-    host: 'c237-eaint-mysql.mysql.database.azure.com', // Replace with your Azure MySQL host
-    user: 'c237_001',     
-    password: 'c237001@2026!', 
-    database: 'c237_001_teamaplus',
-    dateStrings: true // Essential for EJS date HTML inputs
+const db = mysql.createPool({
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT) || 3306,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    dateStrings: true, 
+    ssl: {
+        rejectUnauthorized: false
+    },
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to MySQL:', err.message);
-        return;
+// Test connection silently
+db.getConnection((err, connection) => {
+    if (err) console.error('Database connection failed:', err.message);
+    else {
+        console.log('Connected to Azure MySQL Pool successfully.');
+        connection.release();
     }
-    console.log('Connected to the Azure MySQL database.');
-    
-    const createTableSql = `
-        CREATE TABLE IF NOT EXISTS appointments (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            customer_name VARCHAR(255) NOT NULL,
-            customer_email VARCHAR(255) NOT NULL,
-            appointment_date DATE NOT NULL,
-            appointment_time TIME NOT NULL,
-            notes TEXT
-            status VARCHAR(50) DEFAULT 'Booked'
-        )
-    `;
-    db.query(createTableSql, (err) => {
-        if (err) console.error('Error creating table:', err.message);
-    });
 });
 
 module.exports = db;

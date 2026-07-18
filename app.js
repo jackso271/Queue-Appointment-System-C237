@@ -6,6 +6,7 @@ const path = require('path');
 const queueRoutes = require('./routes/queueRoutes');
 const serviceManagementRoutes =
     require('./routes/serviceManagementRoutes');
+const appointmentRoutes = require('./routes/appointmentRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,12 +25,18 @@ app.use(
     serviceManagementRoutes
 );
 
+app.use('/', appointmentRoutes);
+
 app.get('/', (req, res) => {
     res.redirect('/service-management');
 });
 
 app.use((req, res) => {
     res.status(404).send('Page not found.');
+});
+
+app.get('/', (req, res) => {
+    res.render('index'); 
 });
 
 app.listen(PORT, () => {
