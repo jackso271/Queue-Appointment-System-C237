@@ -4,95 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Appointment | QueueEase</title>
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/appointment.css">
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
             <a class="navbar-brand fw-bold" href="/service-management">
-                QueueEase
+                <i class="bi bi-layers-half me-2 text-primary"></i>QueueEase
             </a>
-
-            <button
-                class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#mainNavbar"
-                aria-controls="mainNavbar"
-                aria-expanded="false"
-                aria-label="Toggle navigation"
-            >
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div
-                class="collapse navbar-collapse"
-                id="mainNavbar"
-            >
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a
-                            class="nav-link"
-                            href="/queue-management"
-                        >
-                            Queue Management
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a
-                            class="nav-link"
-                            href="/service-management"
-                        >
-                            Service Management
-                        </a>
-                    </li>
-                </ul>
-            </div>
         </div>
     </nav>
 
     <div class="main-container">
-        <div class="card">
-            <div class="card-subtitle">QueueEase Administration</div>
-            <h1 class="card-title">Book an Appointment</h1>
-            <p class="card-description">Schedule customer consulting and specialized management services.</p>
-            
-            <form action="/book" method="POST">
-                <div class="form-group">
-                    <label class="form-label">Customer Name</label>
-                    <input type="text" name="customer_name" class="form-control" placeholder="John Doe" required>
-                </div>
+        <div class="card card-creative">
+            <div class="card-gradient-bar"></div>
+            <div class="card-body-content">
+                <div class="card-subtitle"><i class="bi bi-sliders me-1"></i> QueueEase Administration</div>
+                <h1 class="card-title">Let's Schedule an Appointment</h1>
+                <p class="card-description">Fill out the quick form below to sync up with our advanced management queue ecosystem.</p>
+                
+                <form action="/book" method="POST">
+                    <div class="form-group">
+                        <label class="form-label"><i class="bi bi-person-fill form-icon"></i>Customer Name</label>
+                        <input type="text" name="customer_name" class="form-control" placeholder="e.g. John Doe" required>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Customer Email</label>
-                    <input type="email" name="customer_email" class="form-control" placeholder="johndoe@example.com" required>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="bi bi-envelope-fill form-icon"></i>Customer Email</label>
+                        <input type="email" name="customer_email" class="form-control" placeholder="e.g. johndoe@example.com" required>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Preferred Date</label>
-                    <input type="date" name="appointmentDate" class="form-control" required>
-                </div>
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label class="form-label"><i class="bi bi-calendar-event-fill form-icon"></i>Preferred Date</label>
+                            <input type="date" name="appointmentDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label class="form-label"><i class="bi bi-clock-fill form-icon"></i>Preferred Time</label>
+                            <input type="time" name="appointmentTime" class="form-control" required>
+                        </div>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Preferred Time</label>
-                    <input type="time" name="appointmentTime" class="form-control" required>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="bi bi-chat-left-text-fill form-icon"></i>Notes / Special Requirements</label>
+                        <textarea name="remarks" class="form-control" placeholder="Provide details..."></textarea>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Notes / Requirements</label>
-                    <textarea name="remarks" class="form-control" placeholder="Provide any specific documents or requests..."></textarea>
-                </div>
-
-                <div class="btn-group">
-                    <button type="submit" class="btn-booking">Submit Booking</button>
-                    <a href="/" class="btn-cancel">Cancel</a>
-                </div>
-            </form>
+                    <div class="btn-group-creative">
+                        <button type="submit" class="btn-booking-vibrant">
+                            <i class="bi bi-check-circle-fill me-2"></i>Confirm & Book Now
+                        </button>
+                        <a href="/service-management" class="btn-cancel-outline">
+                            <i class="bi bi-x-circle me-1"></i>Discard
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

@@ -1,183 +1,189 @@
 /* ==========================================
-   1. GLOBAL STYLES & VARIABLES
+   DYNAMIC BRANDING VARIABLES
    ========================================== */
 :root {
-    --bg-main: #f8fafc;
+    --bg-workspace: #f0f4f8;
     --bg-card: #ffffff;
-    --text-main: #1e293b;
-    --text-muted: #64748b;
-    --primary-blue: #2563eb;
-    --primary-blue-hover: #1d4ed8;
-    --navbar-dark: #1e1e24;
-    --border-color: #e2e8f0;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.02);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --text-dark: #0f172a;
+    --text-secondary: #475569;
+    
+    /* Vibrant Color Profile */
+    --vibrant-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    --primary-blue: #3b82f6;
+    --accent-purple: #6366f1;
+    --focus-ring: rgba(99, 102, 241, 0.2);
+    --border-soft: #e2e8f0;
+    
+    /* Functional UI States */
+    --hover-overlay: rgba(255, 255, 255, 0.15);
+    --shadow-creative: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
+/* ==========================================
+   RESET & STRUCTURE ENHANCEMENTS
+   ========================================== */
 body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
-    line-height: 1.5;
+    background: radial-gradient(circle at top right, #e0e7ff 0%, var(--bg-workspace) 60%);
+    color: var(--text-dark);
+    min-height: 100vh;
 }
 
-/* ==========================================
-   2. NAVBAR STYLING (Matches the Screenshot)
-   ========================================== */
-.navbar {
-    background-color: var(--navbar-dark);
-    color: #ffffff;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.navbar-brand {
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
-.navbar-links a {
-    color: #cbd5e1;
-    text-decoration: none;
-    margin-left: 1.5rem;
-    font-size: 0.95rem;
-    font-weight: 500;
-    transition: color 0.2s;
-}
-
-.navbar-links a:hover {
-    color: #ffffff;
-}
-
-/* ==========================================
-   3. CONTAINER & CARD LAYOUT
-   ========================================== */
 .main-container {
-    max-width: 800px;
-    margin: 3rem auto;
-    padding: 0 1.5rem;
+    max-width: 720px;
+    margin: 4rem auto;
+    padding: 0 1.25rem;
 }
 
-.card {
+/* ==========================================
+   CREATIVE CARD GRAPHICS
+   ========================================== */
+.card-creative {
     background-color: var(--bg-card);
-    border-radius: 16px;
-    padding: 2.5rem;
-    box-shadow: var(--shadow-md);
-    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 20px;
+    border: none;
+    box-shadow: var(--shadow-creative);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+/* Eye-catching interactive header accent bar */
+.card-gradient-bar {
+    height: 6px;
+    background: var(--vibrant-gradient);
+    width: 100%;
+}
+
+.card-body-content {
+    padding: 3rem 2.5rem;
 }
 
 .card-subtitle {
-    color: var(--primary-blue);
-    font-size: 0.75rem;
+    color: var(--accent-purple);
+    font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
 }
 
 .card-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: var(--vibrant-gradient);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.75rem;
 }
 
 .card-description {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    margin-bottom: 2rem;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
 }
 
 /* ==========================================
-   4. FORM ELEMENTS STYLING
+   LIVELY FORM INPUT CONTROLS
    ========================================== */
 .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
 }
 
 .form-label {
-    display: block;
-    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
     font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    margin-bottom: 0.6rem;
+}
+
+.form-icon {
+    margin-right: 0.5rem;
+    color: var(--primary-blue);
+    font-size: 1rem;
 }
 
 .form-control {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.85rem 1.1rem;
     font-size: 0.95rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border: 2px solid var(--border-soft);
+    border-radius: 10px;
+    color: var(--text-dark);
     background-color: #ffffff;
-    color: var(--text-main);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Dynamic glow effect when a user interacts with a field */
 .form-control:focus {
     outline: none;
-    border-color: var(--primary-blue);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+    background-color: #ffffff;
 }
 
 textarea.form-control {
+    min-height: 110px;
     resize: vertical;
-    min-height: 100px;
 }
 
 /* ==========================================
-   5. BUTTON STYLING
+   CREATIVE INTERACTIVE BUTTONS
    ========================================== */
-.btn-group {
+.btn-group-creative {
     display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
+    gap: 1.25rem;
+    margin-top: 2.5rem;
     align-items: center;
 }
 
-/* Primary Booking Button */
-.btn-booking {
-    background-color: var(--primary-blue);
+/* High-energy Gradient Main Call-To-Action */
+.btn-booking-vibrant {
+    background: var(--vibrant-gradient);
     color: #ffffff;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
-    padding: 0.75rem 1.5rem;
+    padding: 0.9rem 2rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.4);
+    transition: all 0.2s ease;
 }
 
-.btn-booking:hover {
-    background-color: var(--primary-blue-hover);
+.btn-booking-vibrant:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.5);
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
 }
 
-.btn-booking:active {
-    transform: scale(0.98);
+.btn-booking-vibrant:active {
+    transform: translateY(0);
 }
 
-/* Secondary Cancel Button */
-.btn-cancel {
+/* Clean Minimalist Discard Option */
+.btn-cancel-outline {
     background-color: transparent;
-    color: var(--text-muted);
-    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-size: 1rem;
     font-weight: 600;
-    padding: 0.75rem 1.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    padding: 0.9rem 2rem;
+    border: 2px solid var(--border-soft);
+    border-radius: 12px;
     text-decoration: none;
-    text-align: center;
-    transition: background-color 0.2s, color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
 }
 
-.btn-cancel:hover {
-    background-color: #f1f5f9;
-    color: var(--text-main);
+.btn-cancel-outline:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
 }
