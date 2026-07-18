@@ -2,35 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Book Appointment</title>
-</head>
-
-<head>
-    <meta charset="UTF-8">
-    <title>Appointment Management System</title>
+    <title>Book Appointment | QueueEase</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
-
 <body>
-    <h1>Book a New Appointment</h1>
-    <form action="/book" method="POST">
-        <label>Customer Name:</label><br>
-        <input type="text" name="customer_name" required><br><br>
 
-        <label>Customer Email:</label><br>
-        <input type="email" name="customer_email" required><br><br>
+    <nav class="navbar">
+        <div class="navbar-brand">QueueEase</div>
+        <div class="navbar-links">
+            <a href="/queue-management">Queue Management</a>
+            <a href="/service-management">Service Management</a>
+        </div>
+    </nav>
 
-        <label>Date:</label><br>
-        <input type="date" name="appointment_date" required><br><br>
+    <div class="main-container">
+        <div class="card">
+            <div class="card-subtitle">QueueEase Administration</div>
+            <h1 class="card-title">Book an Appointment</h1>
+            <p class="card-description">Schedule customer consulting and specialized management services.</p>
+            
+            <form action="/book" method="POST">
+                <div class="form-group">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" name="customer_name" class="form-control" placeholder="John Doe" required>
+                </div>
 
-        <label>Time:</label><br>
-        <input type="time" name="appointment_time" required><br><br>
+                <div class="form-group">
+                    <label class="form-label">Customer Email</label>
+                    <input type="email" name="customer_email" class="form-control" placeholder="johndoe@example.com" required>
+                </div>
 
-        <label>Notes:</label><br>
-        <textarea name="notes" rows="4" cols="30"></textarea><br><br>
+                <div class="form-group">
+                    <label class="form-label">Preferred Date</label>
+                    <input type="date" name="appointment_date" class="form-control" required>
+                </div>
 
-        <button type="submit">Submit Booking</button>
-        <a href="/">Cancel</a>
-    </form>
+                <div class="form-group">
+                    <label class="form-label">Preferred Time</label>
+                    <input type="time" name="appointment_time" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Notes / Requirements</label>
+                    <textarea name="notes" class="form-control" placeholder="Provide any specific documents or requests..."></textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn-booking">Submit Booking</button>
+                    <a href="/" class="btn-cancel">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </body>
 </html>
