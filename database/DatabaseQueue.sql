@@ -30,6 +30,19 @@ CREATE TABLE IF NOT EXISTS staff (
     PRIMARY KEY (staffID),
     UNIQUE KEY uq_staff_email (email)
 );
+CREATE TABLE IF NOT EXISTS Users (
+    userID INT NOT NULL AUTO_INCREMENT,
+    fullName VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(50),
+    role ENUM('Customer', 'Admin') NOT NULL DEFAULT 'Customer',
+    accountStatus ENUM('Active', 'Inactive', 'Blocked') NOT NULL DEFAULT 'Active',
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (userID),
+    UNIQUE KEY uq_users_email (email)
+);
 CREATE TABLE IF NOT EXISTS appointments (
     appointmentID INT NOT NULL AUTO_INCREMENT,
     userID INT NOT NULL,
@@ -59,7 +72,7 @@ CREATE TABLE IF NOT EXISTS appointments (
 
     CONSTRAINT fk_appointments_user
         FOREIGN KEY (userID)
-        REFERENCES users(id)
+        REFERENCES Users(userID)
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
 
@@ -130,7 +143,7 @@ CREATE TABLE IF NOT EXISTS feedback (
 
     CONSTRAINT fk_feedback_user
         FOREIGN KEY (userID)
-        REFERENCES users(id)
+        REFERENCES Users(userID)
         ON UPDATE CASCADE
         ON DELETE RESTRICT
 );
