@@ -35,21 +35,21 @@ async function showEditForm(req, res) {
 // POST /user/edit  — DB interaction 5: update profile information
 async function updateProfile(req, res) {
   try {
-    const { fullName, phone } = req.body;
+    const { username, address, contact } = req.body;
 
-    if (!fullName) {
-      return res.redirect('/users/edit?error=' + encodeURIComponent('Full name is required.'));
+    if (!username) {
+      return res.redirect('/user/edit?error=' + encodeURIComponent('Username is required.'));
     }
 
-    await userModel.updateProfile(req.session.userId, fullName, phone);
+    await userModel.updateProfile(req.session.userId, username, address, contact);
 
     // Keep session in sync with the new value
-    req.session.fullName = fullName;
+    req.session.username = username;
 
-    return res.redirect('/users/profile?success=' + encodeURIComponent('Profile updated successfully.'));
+    return res.redirect('/user/profile?success=' + encodeURIComponent('Profile updated successfully.'));
   } catch (error) {
     console.error('updateProfile error:', error);
-    return res.redirect('/users/edit?error=' + encodeURIComponent('Unable to update profile at this time.'));
+    return res.redirect('/user/edit?error=' + encodeURIComponent('Unable to update profile at this time.'));
   }
 }
 
@@ -67,15 +67,15 @@ async function changePassword(req, res) {
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      return res.redirect('/users/change-password?error=' + encodeURIComponent('All fields are required.'));
+      return res.redirect('/user/change-password?error=' + encodeURIComponent('All fields are required.'));
     }
 
     if (newPassword !== confirmPassword) {
-      return res.redirect('/users/change-password?error=' + encodeURIComponent('New passwords do not match.'));
+      return res.redirect('/user/change-password?error=' + encodeURIComponent('New passwords do not match.'));
     }
 
     if (newPassword.length < 8) {
-      return res.redirect('/users/change-password?error=' + encodeURIComponent('New password must be at least 8 characters.'));
+      return res.redirect('/user/change-password?error=' + encodeURIComponent('New password must be at least 8 characters.'));
     }
 
     // Need the stored hash to verify the current password — email is
@@ -84,16 +84,16 @@ async function changePassword(req, res) {
     const matches = await bcrypt.compare(currentPassword, fullUser.password);
 
     if (!matches) {
-      return res.redirect('/users/change-password?error=' + encodeURIComponent('Current password is incorrect.'));
+      return res.redirect('/user/change-password?error=' + encodeURIComponent('Current password is incorrect.'));
     }
 
     const newHashedPassword = await bcrypt.hash(newPassword, 10);
     await userModel.updatePassword(req.session.userId, newHashedPassword);
 
-    return res.redirect('/users/profile?success=' + encodeURIComponent('Password updated successfully.'));
+    return res.redirect('/user/profile?success=' + encodeURIComponent('Password updated successfully.'));
   } catch (error) {
     console.error('changePassword error:', error);
-    return res.redirect('/users/change-password?error=' + encodeURIComponent('Unable to update password at this time.'));
+    return res.redirect('/user/change-password?error=' + encodeURIComponent('Unable to update password at this time.'));
   }
 }
 

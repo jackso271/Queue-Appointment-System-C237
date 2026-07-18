@@ -22,7 +22,7 @@ async function ensureAuthenticated(req, res, next) {
     }
 
     // Keep the session in sync with the DB in case profile/role/status changed
-    req.session.fullName = user.fullName;
+    req.session.username = user.username;
     req.session.email = user.email;
     req.session.role = user.role;
     req.session.accountStatus = user.accountStatus;
