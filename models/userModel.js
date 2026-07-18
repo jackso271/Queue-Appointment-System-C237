@@ -1,79 +1,78 @@
-const db = require('../config/database');
+const pool = require('../database');
 
-async function getUserByEmail(email) {
-  const sql = `
-    SELECT userID, fullName, email, password, phone, role, accountStatus
-    FROM Users
-    WHERE email = ?
-    LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [email]);
-  return rows[0] || null;
-}
-
-async function getUserById(userId) {
-  const sql = `
-    SELECT userID, fullName, email, phone, role, accountStatus
-    FROM Users
-    WHERE userID = ?
-    LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [userId]);
-  return rows[0] || null;
-}
-
+// ------------------------------------------------------------------
+// 1. Create a new customer account
+// ------------------------------------------------------------------
 async function createUser(fullName, email, hashedPassword, phone) {
-  const sql = `
-    INSERT INTO Users
-        (fullName, email, password, phone, role, accountStatus)
-    VALUES
-        (?, ?, ?, ?, 'Customer', 'Active')
-  `;
-
-  const [result] = await db.execute(sql, [fullName, email, hashedPassword, phone]);
+  const [result] = await pool.query(
+    `INSERT INTO Users (fullName, email, password, phone, role)
+     VALUES (?, ?, ?, ?, 'Customer')`,
+    [fullName, email, hashedPassword, phone]
+  );
   return result.insertId;
 }
 
-async function updatePassword(userId, hashedPassword) {
-  const sql = `
-    UPDATE Users
-    SET password = ?
-    WHERE userID = ?
-  `;
+// ------------------------------------------------------------------
+// 2. Read a user by email (used during login + duplicate-email check)
+// ------------------------------------------------------------------
+async function getUserByEmail(email) {
+  const [rows] = await pool.query(
+    'SELECT * FROM Users WHERE email = ?',
+    [email]
+  );
+  return rows[0] || null;
+}
 
-  const [result] = await db.execute(sql, [hashedPassword, userId]);
+// ------------------------------------------------------------------
+// 3. Read a user by ID (used during session validation)
+// ------------------------------------------------------------------
+async function getUserById(userID) {
+  const [rows] = await pool.query(
+    `SELECT userID, fullName, email, phone, role, accountStatus
+     FROM Users
+     WHERE userID = ?`,
+    [userID]
+  );
+  return rows[0] || null;
+}
+
+// ------------------------------------------------------------------
+// 4. Update the user's hashed password
+// ------------------------------------------------------------------
+async function updatePassword(userID, newHashedPassword) {
+  const [result] = await pool.query(
+    'UPDATE Users SET password = ? WHERE userID = ?',
+    [newHashedPassword, userID]
+  );
   return result.affectedRows === 1;
 }
 
-async function updateProfile(userId, fullName, phone) {
-  const sql = `
-    UPDATE Users
-    SET fullName = ?, phone = ?
-    WHERE userID = ?
-  `;
-
-  const [result] = await db.execute(sql, [fullName, phone, userId]);
+// ------------------------------------------------------------------
+// 5. Update the user's profile information
+// ------------------------------------------------------------------
+async function updateProfile(userID, fullName, phone) {
+  const [result] = await pool.query(
+    'UPDATE Users SET fullName = ?, phone = ? WHERE userID = ?',
+    [fullName, phone, userID]
+  );
   return result.affectedRows === 1;
 }
 
-async function getRoleAndStatus(userId) {
-  const sql = `
-    SELECT role, accountStatus
-    FROM Users
-    WHERE userID = ?
-    LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [userId]);
+// ------------------------------------------------------------------
+// 6. Read the user's role and account status (used for authorization)
+// ------------------------------------------------------------------
+async function getRoleAndStatus(userID) {
+  const [rows] = await pool.query(
+    'SELECT role, accountStatus FROM Users WHERE userID = ?',
+    [userID]
+  );
   return rows[0] || null;
 }
 
 module.exports = {
+  createUser,
   getUserByEmail,
   getUserById,
-  createUser,
   updatePassword,
   updateProfile,
   getRoleAndStatus
