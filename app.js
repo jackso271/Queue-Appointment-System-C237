@@ -3,6 +3,9 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
+const feedbackRoutes = require('./routes/feedbackRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 const queueRoutes = require('./routes/queueRoutes');
 const serviceManagementRoutes =
     require('./routes/serviceManagementRoutes');
@@ -23,6 +26,9 @@ app.use(
     '/service-management',
     serviceManagementRoutes
 );
+app.use('/feedback', feedbackRoutes);
+app.use('/dashboard', dashboardRoutes);
+app.use('/reports', reportRoutes);
 
 app.get('/', (req, res) => {
     res.redirect('/service-management');
