@@ -5,6 +5,7 @@ const path = require('path');
 const session = require('express-session');
 const queueRoutes = require('./routes/queueRoutes');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,7 +32,10 @@ app.use('/user', userRoutes);
 app.use('/', queueRoutes);
 
 app.get('/', (req, res) => {
-    res.redirect('/queue/admin');
+    if (req.session && req.session.userId) {
+        return res.redirect(req.session.role === 'Admin' ? '/queue/admin' : '/user/profile');
+    }
+    return res.redirect('/auth/register');
 });
 
 app.listen(PORT, () => {

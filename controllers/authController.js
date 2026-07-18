@@ -36,13 +36,16 @@ async function login(req, res) {
       return res.redirect('/auth/login?error=' + encodeURIComponent('Invalid email or password.'));
     }
 
-    req.session.userId = user.userID;
-    req.session.fullName = user.fullName;
+    req.session.userId = user.id;
+    req.session.username = user.username;
     req.session.email = user.email;
     req.session.role = user.role;
     req.session.accountStatus = user.accountStatus;
 
-    return res.redirect('/');
+    if (user.role === 'Admin') {
+      return res.redirect('/queue/admin');
+    }
+    return res.redirect('/user/profile');
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).send('Unable to login at this time.');
@@ -51,9 +54,9 @@ async function login(req, res) {
 
 async function register(req, res) {
   try {
-    const { fullName, email, password, phone } = req.body;
+    const { username, email, password, address, contact } = req.body;
 
-    if (!fullName || !email || !password || !phone) {
+    if (!username || !email || !password || !address || !contact) {
       return res.redirect('/auth/register?error=' + encodeURIComponent('All fields are required.'));
     }
 
@@ -65,7 +68,7 @@ async function register(req, res) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await userModel.createUser(fullName, email, hashedPassword, phone);
+    await userModel.createUser(username, email, hashedPassword, address, contact);
 
     return res.redirect('/auth/login?success=' + encodeURIComponent('Registration successful. Please login.'));
   } catch (error) {

@@ -1,13 +1,13 @@
-const pool = require('../database');
+const pool = require('../config/database');
 
 // ------------------------------------------------------------------
 // 1. Create a new customer account
 // ------------------------------------------------------------------
-async function createUser(fullName, email, hashedPassword, phone) {
+async function createUser(username, email, hashedPassword, address, contact) {
   const [result] = await pool.query(
-    `INSERT INTO Users (fullName, email, password, phone, role)
-     VALUES (?, ?, ?, ?, 'Customer')`,
-    [fullName, email, hashedPassword, phone]
+    `INSERT INTO users (username, email, password, address, contact, role)
+     VALUES (?, ?, ?, ?, ?, 'Customer')`,
+    [username, email, hashedPassword, address, contact]
   );
   return result.insertId;
 }
@@ -17,7 +17,7 @@ async function createUser(fullName, email, hashedPassword, phone) {
 // ------------------------------------------------------------------
 async function getUserByEmail(email) {
   const [rows] = await pool.query(
-    'SELECT * FROM Users WHERE email = ?',
+    'SELECT * FROM users WHERE email = ?',
     [email]
   );
   return rows[0] || null;
@@ -26,12 +26,12 @@ async function getUserByEmail(email) {
 // ------------------------------------------------------------------
 // 3. Read a user by ID (used during session validation)
 // ------------------------------------------------------------------
-async function getUserById(userID) {
+async function getUserById(id) {
   const [rows] = await pool.query(
-    `SELECT userID, fullName, email, phone, role, accountStatus
-     FROM Users
-     WHERE userID = ?`,
-    [userID]
+    `SELECT id, username, email, address, contact, role, accountStatus
+     FROM users
+     WHERE id = ?`,
+    [id]
   );
   return rows[0] || null;
 }
@@ -39,10 +39,10 @@ async function getUserById(userID) {
 // ------------------------------------------------------------------
 // 4. Update the user's hashed password
 // ------------------------------------------------------------------
-async function updatePassword(userID, newHashedPassword) {
+async function updatePassword(id, newHashedPassword) {
   const [result] = await pool.query(
-    'UPDATE Users SET password = ? WHERE userID = ?',
-    [newHashedPassword, userID]
+    'UPDATE users SET password = ? WHERE id = ?',
+    [newHashedPassword, id]
   );
   return result.affectedRows === 1;
 }
@@ -50,10 +50,10 @@ async function updatePassword(userID, newHashedPassword) {
 // ------------------------------------------------------------------
 // 5. Update the user's profile information
 // ------------------------------------------------------------------
-async function updateProfile(userID, fullName, phone) {
+async function updateProfile(id, username, address, contact) {
   const [result] = await pool.query(
-    'UPDATE Users SET fullName = ?, phone = ? WHERE userID = ?',
-    [fullName, phone, userID]
+    'UPDATE users SET username = ?, address = ?, contact = ? WHERE id = ?',
+    [username, address, contact, id]
   );
   return result.affectedRows === 1;
 }
@@ -61,10 +61,10 @@ async function updateProfile(userID, fullName, phone) {
 // ------------------------------------------------------------------
 // 6. Read the user's role and account status (used for authorization)
 // ------------------------------------------------------------------
-async function getRoleAndStatus(userID) {
+async function getRoleAndStatus(id) {
   const [rows] = await pool.query(
-    'SELECT role, accountStatus FROM Users WHERE userID = ?',
-    [userID]
+    'SELECT role, accountStatus FROM users WHERE id = ?',
+    [id]
   );
   return rows[0] || null;
 }

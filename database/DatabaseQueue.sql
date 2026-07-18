@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS staff (
     PRIMARY KEY (staffID),
     UNIQUE KEY uq_staff_email (email)
 );
+
+-- NEW: was missing from the file entirely — matches userModel.js exactly
 CREATE TABLE IF NOT EXISTS Users (
     userID INT NOT NULL AUTO_INCREMENT,
     fullName VARCHAR(255) NOT NULL,
@@ -43,6 +45,7 @@ CREATE TABLE IF NOT EXISTS Users (
     PRIMARY KEY (userID),
     UNIQUE KEY uq_users_email (email)
 );
+
 CREATE TABLE IF NOT EXISTS appointments (
     appointmentID INT NOT NULL AUTO_INCREMENT,
     userID INT NOT NULL,
@@ -70,6 +73,7 @@ CREATE TABLE IF NOT EXISTS appointments (
         status
     ),
 
+    -- FIXED: was REFERENCES users(id)
     CONSTRAINT fk_appointments_user
         FOREIGN KEY (userID)
         REFERENCES Users(userID)
@@ -141,6 +145,7 @@ CREATE TABLE IF NOT EXISTS feedback (
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
 
+    -- FIXED: was REFERENCES users(id)
     CONSTRAINT fk_feedback_user
         FOREIGN KEY (userID)
         REFERENCES Users(userID)

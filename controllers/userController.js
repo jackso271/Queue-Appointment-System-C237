@@ -5,7 +5,7 @@ const userModel = require('../models/userModel');
 async function showProfile(req, res) {
   try {
     const user = await userModel.getUserById(req.session.userId);
-    return res.render('user/profile', {
+    return res.render('users/profile', {
       title: 'My Profile',
       user,
       error: req.query.error || null,
@@ -21,7 +21,7 @@ async function showProfile(req, res) {
 async function showEditForm(req, res) {
   try {
     const user = await userModel.getUserById(req.session.userId);
-    return res.render('user/edit', {
+    return res.render('users/edit', {
       title: 'Edit Profile',
       user,
       error: req.query.error || null
@@ -38,7 +38,7 @@ async function updateProfile(req, res) {
     const { fullName, phone } = req.body;
 
     if (!fullName) {
-      return res.redirect('/user/edit?error=' + encodeURIComponent('Full name is required.'));
+      return res.redirect('/users/edit?error=' + encodeURIComponent('Full name is required.'));
     }
 
     await userModel.updateProfile(req.session.userId, fullName, phone);
@@ -46,16 +46,16 @@ async function updateProfile(req, res) {
     // Keep session in sync with the new value
     req.session.fullName = fullName;
 
-    return res.redirect('/user/profile?success=' + encodeURIComponent('Profile updated successfully.'));
+    return res.redirect('/users/profile?success=' + encodeURIComponent('Profile updated successfully.'));
   } catch (error) {
     console.error('updateProfile error:', error);
-    return res.redirect('/user/edit?error=' + encodeURIComponent('Unable to update profile at this time.'));
+    return res.redirect('/users/edit?error=' + encodeURIComponent('Unable to update profile at this time.'));
   }
 }
 
 // GET /user/change-password
 function showChangePasswordForm(req, res) {
-  return res.render('user/change-password', {
+  return res.render('users/change-password', {
     title: 'Change Password',
     error: req.query.error || null
   });
@@ -67,15 +67,15 @@ async function changePassword(req, res) {
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      return res.redirect('/user/change-password?error=' + encodeURIComponent('All fields are required.'));
+      return res.redirect('/users/change-password?error=' + encodeURIComponent('All fields are required.'));
     }
 
     if (newPassword !== confirmPassword) {
-      return res.redirect('/user/change-password?error=' + encodeURIComponent('New passwords do not match.'));
+      return res.redirect('/users/change-password?error=' + encodeURIComponent('New passwords do not match.'));
     }
 
     if (newPassword.length < 8) {
-      return res.redirect('/user/change-password?error=' + encodeURIComponent('New password must be at least 8 characters.'));
+      return res.redirect('/users/change-password?error=' + encodeURIComponent('New password must be at least 8 characters.'));
     }
 
     // Need the stored hash to verify the current password — email is
@@ -84,16 +84,16 @@ async function changePassword(req, res) {
     const matches = await bcrypt.compare(currentPassword, fullUser.password);
 
     if (!matches) {
-      return res.redirect('/user/change-password?error=' + encodeURIComponent('Current password is incorrect.'));
+      return res.redirect('/users/change-password?error=' + encodeURIComponent('Current password is incorrect.'));
     }
 
     const newHashedPassword = await bcrypt.hash(newPassword, 10);
     await userModel.updatePassword(req.session.userId, newHashedPassword);
 
-    return res.redirect('/user/profile?success=' + encodeURIComponent('Password updated successfully.'));
+    return res.redirect('/users/profile?success=' + encodeURIComponent('Password updated successfully.'));
   } catch (error) {
     console.error('changePassword error:', error);
-    return res.redirect('/user/change-password?error=' + encodeURIComponent('Unable to update password at this time.'));
+    return res.redirect('/users/change-password?error=' + encodeURIComponent('Unable to update password at this time.'));
   }
 }
 
