@@ -40,7 +40,7 @@ async function getAllFeedback() {
             f.rating,
             f.comments,
             f.submittedDate,
-            u.fullName AS customerName,
+            u.username AS customerName,
             s.serviceName,
             a.appointmentDate,
             a.appointmentTime
@@ -167,12 +167,59 @@ async function deleteFeedback(feedbackID, userID) {
 
     return result.affectedRows === 1;
 }
+// Get completed appointment eligible for feedback
+async function getEligibleAppointment(appointmentID, userID) {
+    const sql = `
+        SELECT
+            a.appointmentID,
+            a.userID,
+            a.status,
+            a.appointmentDate,
+            a.appointmentTime,
+            s.serviceName,
+            f.feedbackID
+        FROM appointments a
+        INNER JOIN services s
+            ON a.serviceID = s.serviceID
+        LEFT JOIN feedback f
+            ON a.appointmentID = f.appointmentID
+        WHERE a.appointmentID = ?
+          AND a.userID = ?
+        LIMIT 1
+    `;
+
+    const [rows] = await db.execute(sql, [appointmentID, userID]);
+    return rows[0];
+}
+
+// Create feedback
+async function createFeedback({ appointmentID, userID, rating, comments }) {
+    const sql = `
+        INSERT INTO feedback (
+            appointmentID,
+            userID,
+            rating,
+            comments
+        )
+        VALUES (?, ?, ?, ?)
+    `;
+
+    const [result] = await db.execute(sql, [
+        appointmentID,
+        userID,
+        rating,
+        comments
+    ]);
+
+    return result.insertId;
+}
 
 module.exports = {
     createFeedback,
     getAllFeedback,
     getFeedbackById,
     getEligibleAppointment,
+    createFeedback,
     updateFeedback,
     deleteFeedback
 };

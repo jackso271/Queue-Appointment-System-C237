@@ -67,7 +67,7 @@ async function getRecentFeedback() {
             f.rating,
             f.comments,
             f.submittedDate,
-            u.fullName AS customerName,
+            u.username AS customerName,
             s.serviceName
         FROM feedback f
         INNER JOIN users u

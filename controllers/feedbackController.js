@@ -232,6 +232,62 @@ async function deleteFeedback(req, res) {
     }
 
 }
+// Display feedback form
+async function displayAddFeedback(req, res) {
+    try {
+        const userID = getAuthenticatedUserId(req);
+        const { appointmentID } = req.params;
+
+        const appointment = await feedbackModel.getEligibleAppointment(
+            appointmentID,
+            userID
+        );
+
+        if (!appointment) {
+            return res.status(404).send("Appointment not found.");
+        }
+
+        if (appointment.status !== "Completed") {
+            return res.status(400).send("Appointment is not completed.");
+        }
+
+        if (appointment.feedbackID) {
+            return res.status(400).send("Feedback already submitted.");
+        }
+
+        res.render("feedback/addFeedback", {
+            appointment,
+            error: null
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Unable to load feedback page.");
+    }
+}
+
+// Submit feedback
+async function createFeedback(req, res) {
+    try {
+
+        const userID = getAuthenticatedUserId(req);
+        const { appointmentID } = req.params;
+        const { rating, comments } = req.body;
+
+        await feedbackModel.createFeedback({
+            appointmentID,
+            userID,
+            rating,
+            comments
+        });
+
+        res.redirect("/feedback");
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Unable to submit feedback.");
+    }
+}
 
 module.exports = {
 

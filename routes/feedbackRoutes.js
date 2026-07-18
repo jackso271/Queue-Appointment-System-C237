@@ -12,6 +12,16 @@ router.get('/add/:appointmentID', feedbackController.displayAddFeedback);
 // Submit feedback
 router.post('/add/:appointmentID', feedbackController.createFeedback);
 
+router.get(
+    "/add/:appointmentID",
+    feedbackController.displayAddFeedback
+);
+
+router.post(
+    "/add/:appointmentID",
+    feedbackController.createFeedback
+);
+
 // Display one feedback entry
 router.get('/:feedbackID', feedbackController.displayFeedbackDetails);
 
