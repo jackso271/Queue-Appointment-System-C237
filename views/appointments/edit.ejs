@@ -13,24 +13,41 @@
 
 <body>
     <h1>Edit Appointment</h1>
-    <form action="/edit/<%= appointment.id %>" method="POST">
-        <label>Customer Name:</label><br>
-        <input type="text" name="customer_name" value="<%= appointment.customer_name %>" required><br><br>
+    <% if (error) { %>
+        <p style="color:red;"><%= error %></p>
+    <% } %>
 
-        <label>Customer Email:</label><br>
-        <input type="email" name="customer_email" value="<%= appointment.customer_email %>" required><br><br>
-
+    <form action="/edit/<%= appointment.appointmentID %>" method="POST">
         <label>Date:</label><br>
-        <input type="date" name="appointment_date" value="<%= appointment.appointment_date %>" required><br><br>
+        <input type="date" name="appointmentDate" value="<%= appointment.appointmentDate %>" required><br><br>
 
         <label>Time:</label><br>
-        <input type="time" name="appointment_time" value="<%= appointment.appointment_time %>" required><br><br>
+        <input type="time" name="appointmentTime" value="<%= appointment.appointmentTime %>" required><br><br>
+
+        <label>Service:</label><br>
+        <select name="serviceID" required>
+            <option value="">Select a service</option>
+            <% services.forEach(service => { %>
+                <option value="<%= service.serviceID %>" <%= String(appointment.serviceID || '') === String(service.serviceID) ? 'selected' : '' %>>
+                    <%= service.serviceName %>
+                </option>
+            <% }) %>
+        </select><br><br>
+
+        <label>Status:</label><br>
+        <select name="status" required>
+            <% ['Pending', 'Approved', 'Rejected', 'Completed', 'Cancelled'].forEach(status => { %>
+                <option value="<%= status %>" <%= appointment.status === status ? 'selected' : '' %>>
+                    <%= status %>
+                </option>
+            <% }) %>
+        </select><br><br>
 
         <label>Notes:</label><br>
-        <textarea name="notes" rows="4" cols="30"><%= appointment.notes %></textarea><br><br>
+        <textarea name="remarks" rows="4" cols="30"><%= appointment.remarks || '' %></textarea><br><br>
 
         <button type="submit">Update Booking</button>
-        <a href="/">Cancel</a>
+        <a href="/appointments">Cancel</a>
     </form>
 </body>
 </html>

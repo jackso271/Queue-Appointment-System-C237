@@ -12,7 +12,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/service-management">
+            <a class="navbar-brand fw-bold" href="/appointments">
                 <i class="bi bi-layers-half me-2 text-primary"></i>QueueEase
             </a>
         </div>
@@ -26,38 +26,49 @@
                 <h1 class="card-title">Let's Schedule an Appointment</h1>
                 <p class="card-description">Fill out the quick form below to sync up with our advanced management queue ecosystem.</p>
                 
+                <% if (error) { %>
+                    <div class="alert alert-danger"><%= error %></div>
+                <% } %>
+
                 <form action="/book" method="POST">
                     <div class="form-group">
-                        <label class="form-label"><i class="bi bi-person-fill form-icon"></i>Customer Name</label>
-                        <input type="text" name="customer_name" class="form-control" placeholder="e.g. John Doe" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label"><i class="bi bi-envelope-fill form-icon"></i>Customer Email</label>
-                        <input type="email" name="customer_email" class="form-control" placeholder="e.g. johndoe@example.com" required>
+                        <label class="form-label"><i class="bi bi-person-fill form-icon"></i>User ID</label>
+                        <input type="number" name="userID" class="form-control" value="<%= formData.userID || 1 %>" min="1" required>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 form-group">
                             <label class="form-label"><i class="bi bi-calendar-event-fill form-icon"></i>Preferred Date</label>
-                            <input type="date" name="appointmentDate" class="form-control" required>
+                            <input type="date" name="appointmentDate" class="form-control" value="<%= formData.appointmentDate || '' %>" required>
                         </div>
                         <div class="col-md-6 form-group">
                             <label class="form-label"><i class="bi bi-clock-fill form-icon"></i>Preferred Time</label>
-                            <input type="time" name="appointmentTime" class="form-control" required>
+                            <input type="time" name="appointmentTime" class="form-control" value="<%= formData.appointmentTime || '' %>" required>
                         </div>
                     </div>
 
                     <div class="form-group">
+                        <label class="form-label"><i class="bi bi-layers-fill form-icon"></i>Service</label>
+                        <select name="serviceID" class="form-control" required>
+                            <option value="">Select a service</option>
+                            <% services.forEach(service => { %>
+                                <option value="<%= service.serviceID %>" <%= String(formData.serviceID || '') === String(service.serviceID) ? 'selected' : '' %>>
+                                    <%= service.serviceName %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label class="form-label"><i class="bi bi-chat-left-text-fill form-icon"></i>Notes / Special Requirements</label>
-                        <textarea name="remarks" class="form-control" placeholder="Provide details..."></textarea>
+                        <textarea name="remarks" class="form-control" placeholder="Provide details..."><%= formData.remarks || '' %></textarea>
                     </div>
 
                     <div class="btn-group-creative">
                         <button type="submit" class="btn-booking-vibrant">
                             <i class="bi bi-check-circle-fill me-2"></i>Confirm & Book Now
                         </button>
-                        <a href="/service-management" class="btn-cancel-outline">
+                        <a href="/appointments" class="btn-cancel-outline">
                             <i class="bi bi-x-circle me-1"></i>Discard
                         </a>
                     </div>

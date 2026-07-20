@@ -1921,7 +1921,7 @@ Each team member should develop their feature on a separate branch.
 |---|---|
 | Ming Hao | `feature/authentication-authorization` |
 | MM | `feature/appointment-management` |
-| Wei Jin | `feature/service-management` |
+| Wei Jin | Service Management feature removed; services data remains shared |
 | Jason | `feature/queue-management` |
 | Ray | `feature/staff-user-management` |
 | Kay Yi | `feature/dashboard-reports-feedback` |
