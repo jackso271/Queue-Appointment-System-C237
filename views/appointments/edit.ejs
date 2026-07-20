@@ -17,7 +17,7 @@
         <p style="color:red;"><%= error %></p>
     <% } %>
 
-    <form action="/edit/<%= appointment.appointmentID %>" method="POST">
+    <form action="/appointments/edit/<%= appointment.appointmentID %>" method="POST">
         <label>Date:</label><br>
         <input type="date" name="appointmentDate" value="<%= appointment.appointmentDate %>" required><br><br>
 

@@ -1,3 +1,20 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INT NOT NULL AUTO_INCREMENT,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    address VARCHAR(255),
+    contact VARCHAR(20),
+    role ENUM('Staff', 'Admin')
+        NOT NULL DEFAULT 'Staff',
+    accountStatus ENUM('Active', 'Inactive', 'Blocked')
+        NOT NULL DEFAULT 'Active',
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_users_email (email)
+);
+
 CREATE TABLE IF NOT EXISTS services (
     serviceID INT NOT NULL AUTO_INCREMENT,
     serviceName VARCHAR(100) NOT NULL,
@@ -32,7 +49,10 @@ CREATE TABLE IF NOT EXISTS staff (
 );
 CREATE TABLE IF NOT EXISTS appointments (
     appointmentID INT NOT NULL AUTO_INCREMENT,
-    userID INT NOT NULL,
+    userID INT NULL,
+    customerName VARCHAR(100) NOT NULL,
+    customerEmail VARCHAR(255) NOT NULL,
+    customerPhone VARCHAR(20),
     serviceID INT NOT NULL,
     staffID INT NULL,
     appointmentDate DATE NOT NULL,
@@ -61,7 +81,7 @@ CREATE TABLE IF NOT EXISTS appointments (
         FOREIGN KEY (userID)
         REFERENCES users(id)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT,
+        ON DELETE SET NULL,
 
     CONSTRAINT fk_appointments_service
         FOREIGN KEY (serviceID)
@@ -106,7 +126,7 @@ CREATE TABLE IF NOT EXISTS queue (
 CREATE TABLE IF NOT EXISTS feedback (
     feedbackID INT NOT NULL AUTO_INCREMENT,
     appointmentID INT NOT NULL,
-    userID INT NOT NULL,
+    userID INT NULL,
     rating INT NOT NULL,
     comments VARCHAR(500),
     submittedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -132,5 +152,5 @@ CREATE TABLE IF NOT EXISTS feedback (
         FOREIGN KEY (userID)
         REFERENCES users(id)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT
+        ON DELETE SET NULL
 );

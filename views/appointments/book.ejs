@@ -12,7 +12,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/appointments">
+            <a class="navbar-brand fw-bold" href="/">
                 <i class="bi bi-layers-half me-2 text-primary"></i>QueueEase
             </a>
         </div>
@@ -30,10 +30,21 @@
                     <div class="alert alert-danger"><%= error %></div>
                 <% } %>
 
-                <form action="/book" method="POST">
+                <form action="/appointments/book" method="POST">
                     <div class="form-group">
-                        <label class="form-label"><i class="bi bi-person-fill form-icon"></i>User ID</label>
-                        <input type="number" name="userID" class="form-control" value="<%= formData.userID || 1 %>" min="1" required>
+                        <label class="form-label"><i class="bi bi-person-fill form-icon"></i>Customer Name</label>
+                        <input type="text" name="customerName" class="form-control" value="<%= formData.customerName || '' %>" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label class="form-label"><i class="bi bi-envelope-fill form-icon"></i>Email</label>
+                            <input type="email" name="customerEmail" class="form-control" value="<%= formData.customerEmail || '' %>" required>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label class="form-label"><i class="bi bi-telephone-fill form-icon"></i>Phone</label>
+                            <input type="tel" name="customerPhone" class="form-control" value="<%= formData.customerPhone || '' %>">
+                        </div>
                     </div>
 
                     <div class="row">
@@ -68,7 +79,7 @@
                         <button type="submit" class="btn-booking-vibrant">
                             <i class="bi bi-check-circle-fill me-2"></i>Confirm & Book Now
                         </button>
-                        <a href="/appointments" class="btn-cancel-outline">
+                        <a href="/" class="btn-cancel-outline">
                             <i class="bi bi-x-circle me-1"></i>Discard
                         </a>
                     </div>

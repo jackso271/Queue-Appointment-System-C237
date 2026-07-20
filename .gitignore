@@ -1,2 +1,5 @@
 node_modules/
 .env
+*.log
+server-route.err.log
+server-route.out.log
