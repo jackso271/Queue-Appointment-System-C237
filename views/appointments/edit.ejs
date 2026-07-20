@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Appointment</title>
+</head>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Appointment Management System</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <h1>Edit Appointment</h1>
+    <form action="/edit/<%= appointment.id %>" method="POST">
+        <label>Customer Name:</label><br>
+        <input type="text" name="customer_name" value="<%= appointment.customer_name %>" required><br><br>
+
+        <label>Customer Email:</label><br>
+        <input type="email" name="customer_email" value="<%= appointment.customer_email %>" required><br><br>
+
+        <label>Date:</label><br>
+        <input type="date" name="appointment_date" value="<%= appointment.appointment_date %>" required><br><br>
+
+        <label>Time:</label><br>
+        <input type="time" name="appointment_time" value="<%= appointment.appointment_time %>" required><br><br>
+
+        <label>Notes:</label><br>
+        <textarea name="notes" rows="4" cols="30"><%= appointment.notes %></textarea><br><br>
+
+        <button type="submit">Update Booking</button>
+        <a href="/">Cancel</a>
+    </form>
+</body>
+</html>

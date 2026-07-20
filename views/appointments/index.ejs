@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Appointment Management System</title>
+</head>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Appointment Management System</title>
+    <link rel="stylesheet" href="/css/style.css">
+    
+</head>
+
+<body>
+    <h1>Customer Appointments</h1>
+    <a href="/book"><button>Book New Appointment</button></a>
+    
+    <hr>
+
+    <% if (appointments.length === 0) { %>
+        <p>No appointments found.</p>
+    <% } else { %>
+        <table border="1" cellpadding="10" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Customer Name</th>
+                    <th>Email</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% appointments.forEach(app => { %>
+                    <tr>
+                        <td><%= app.customer_name %></td>
+                        <td><%= app.customer_email %></td>
+                        <td><%= app.appointmentDate %></td>
+                        <td><%= app.appointmentTime %></td>
+                        <td><%= app.remarks %></td>
+                        <td>
+                            <a href="/edit/<%= app.id %>"><button>Edit</button></a>
+                            <form action="/cancel/<%= app.id %>" method="POST" style="display:inline;">
+                                <button type="submit" onclick="return confirm('Are you sure?')">Cancel Appointment</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    <% } %>
+</body>
+</html>
