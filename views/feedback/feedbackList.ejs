@@ -209,14 +209,14 @@
                                         </a>
 
                                         <a
-                                            href="/feedback/<%= item.feedbackID %>/edit"
+                                            href="/feedback/edit/<%= item.feedbackID %>"
                                             class="btn btn-sm btn-outline-secondary"
                                         >
                                             Edit
                                         </a>
 
                                         <form
-                                            action="/feedback/<%= item.feedbackID %>/delete"
+                                            action="/feedback/delete/<%= item.feedbackID %>"
                                             method="POST"
                                             onsubmit="return confirm(
                                                 'Delete this feedback?'

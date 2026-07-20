@@ -1,0 +1,189 @@
+/* ==========================================
+   DYNAMIC BRANDING VARIABLES
+   ========================================== */
+:root {
+    --bg-workspace: #f0f4f8;
+    --bg-card: #ffffff;
+    --text-dark: #0f172a;
+    --text-secondary: #475569;
+    
+    /* Vibrant Color Profile */
+    --vibrant-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    --primary-blue: #3b82f6;
+    --accent-purple: #6366f1;
+    --focus-ring: rgba(99, 102, 241, 0.2);
+    --border-soft: #e2e8f0;
+    
+    /* Functional UI States */
+    --hover-overlay: rgba(255, 255, 255, 0.15);
+    --shadow-creative: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================================
+   RESET & STRUCTURE ENHANCEMENTS
+   ========================================== */
+body {
+    background: radial-gradient(circle at top right, #e0e7ff 0%, var(--bg-workspace) 60%);
+    color: var(--text-dark);
+    min-height: 100vh;
+}
+
+.main-container {
+    max-width: 720px;
+    margin: 4rem auto;
+    padding: 0 1.25rem;
+}
+
+/* ==========================================
+   CREATIVE CARD GRAPHICS
+   ========================================== */
+.card-creative {
+    background-color: var(--bg-card);
+    border-radius: 20px;
+    border: none;
+    box-shadow: var(--shadow-creative);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+/* Eye-catching interactive header accent bar */
+.card-gradient-bar {
+    height: 6px;
+    background: var(--vibrant-gradient);
+    width: 100%;
+}
+
+.card-body-content {
+    padding: 3rem 2.5rem;
+}
+
+.card-subtitle {
+    color: var(--accent-purple);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+}
+
+.card-title {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: var(--vibrant-gradient);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.75rem;
+}
+
+.card-description {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+/* ==========================================
+   LIVELY FORM INPUT CONTROLS
+   ========================================== */
+.form-group {
+    margin-bottom: 1.75rem;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.6rem;
+}
+
+.form-icon {
+    margin-right: 0.5rem;
+    color: var(--primary-blue);
+    font-size: 1rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.85rem 1.1rem;
+    font-size: 0.95rem;
+    border: 2px solid var(--border-soft);
+    border-radius: 10px;
+    color: var(--text-dark);
+    background-color: #ffffff;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dynamic glow effect when a user interacts with a field */
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+    background-color: #ffffff;
+}
+
+textarea.form-control {
+    min-height: 110px;
+    resize: vertical;
+}
+
+/* ==========================================
+   CREATIVE INTERACTIVE BUTTONS
+   ========================================== */
+.btn-group-creative {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 2.5rem;
+    align-items: center;
+}
+
+/* High-energy Gradient Main Call-To-Action */
+.btn-booking-vibrant {
+    background: var(--vibrant-gradient);
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.9rem 2rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.4);
+    transition: all 0.2s ease;
+}
+
+.btn-booking-vibrant:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.5);
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+}
+
+.btn-booking-vibrant:active {
+    transform: translateY(0);
+}
+
+/* Clean Minimalist Discard Option */
+.btn-cancel-outline {
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.9rem 2rem;
+    border: 2px solid var(--border-soft);
+    border-radius: 12px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel-outline:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
