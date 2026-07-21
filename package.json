@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/jackso271/Queue-Appointment-System-C237#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "connect-flash": "^0.1.1",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",

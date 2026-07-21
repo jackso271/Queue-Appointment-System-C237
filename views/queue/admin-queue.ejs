@@ -113,10 +113,12 @@
                         <thead class="table-dark">
                             <tr>
                                 <th scope="col">Queue Number</th>
+                                <th scope="col">Appointment ID</th>
                                 <th scope="col">Customer Name</th>
                                 <th scope="col">Service</th>
                                 <th scope="col">Staff</th>
                                 <th scope="col">Appointment Time</th>
+                                <th scope="col">Appointment Status</th>
                                 <th scope="col">Check-in Time</th>
                                 <th scope="col">Status</th>
                                 <th scope="col" class="text-lg-end">Actions</th>
@@ -125,7 +127,8 @@
                         <tbody>
                             <% queueEntries.forEach((entry) => { %>
                                 <tr>
-                                    <td class="fw-bold"><%= formatQueueNumber(entry.queueNumber) %></td>
+                                    <td><span class="queue-number-badge"><%= formatQueueNumber(entry.queueNumber) %></span></td>
+                                    <td><%= entry.appointmentID %></td>
                                     <td><%= entry.customerName || (entry.userID ? `Customer #${entry.userID}` : 'Customer unavailable') %></td>
                                     <td><%= entry.serviceName || 'Service unavailable' %></td>
                                     <td><%= entry.staffName || 'Not assigned' %></td>
@@ -133,6 +136,7 @@
                                         <div><%= formatDate(entry.appointmentDate) %></div>
                                         <small class="text-muted"><%= formatTime(entry.appointmentTime) %></small>
                                     </td>
+                                    <td><%= entry.appointmentStatus || 'Unknown' %></td>
                                     <td><%= formatDateTime(entry.checkInTime) %></td>
                                     <td>
                                         <span class="badge text-bg-<%= getStatusClass(entry.queueStatus) %>">

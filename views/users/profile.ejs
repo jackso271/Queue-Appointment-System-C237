@@ -8,6 +8,7 @@
     <link href="/css/style.css" rel="stylesheet">
 </head>
 <body class="auth-page">
+    <%- include('../partials/navbar') %>
     <main class="auth-shell">
         <section class="auth-card profile-card">
             <div class="auth-card__header profile-card__header">
@@ -18,9 +19,6 @@
                             <h1 class="auth-card__title">My Profile</h1>
                             <p class="auth-card__subtitle">View and update your account information.</p>
                         </div>
-                        <form method="POST" action="/logout">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm profile-logout-btn">Logout</button>
-                        </form>
                     </div>
                 </div>
             </div>

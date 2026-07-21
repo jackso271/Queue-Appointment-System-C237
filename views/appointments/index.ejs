@@ -2,63 +2,148 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Appointment Management System</title>
-</head>
-
-<head>
-    <meta charset="UTF-8">
-    <title>Appointment Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Appointments | QueueEase</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
-    
 </head>
+<body class="bg-light">
+<%- include('../partials/navbar') %>
 
-<body>
-    <h1>Customer Appointments</h1>
-    <a href="/appointments/book"><button>Book New Appointment</button></a>
-    
-    <hr>
+<%
+    const getAppointmentStatusClass = (status) => {
+        if (status === 'Pending') return 'status-badge--pending';
+        if (status === 'Approved') return 'status-badge--approved';
+        if (status === 'Rejected') return 'status-badge--rejected';
+        if (status === 'Cancelled') return 'status-badge--cancelled';
+        if (status === 'Completed') return 'status-badge--completed';
+        return 'status-badge--muted';
+    };
 
-    <% if (appointments.length === 0) { %>
-        <p>No appointments found.</p>
-    <% } else { %>
-        <table border="1" cellpadding="10" cellspacing="0">
-            <thead>
-                <tr>
-                    <th>Customer Name</th>
-                    <th>Email</th>
-                    <th>Service</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Notes</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% appointments.forEach(app => { %>
-                    <tr>
-                        <td><%= app.customer_name %></td>
-                        <td><%= app.customer_email %></td>
-                        <td><%= app.serviceName || 'Unknown service' %></td>
-                        <td><%= app.appointmentDate %></td>
-                        <td><%= app.appointmentTime %></td>
-                        <td><%= app.remarks %></td>
-                        <td><%= app.status %></td>
-                        <td>
-                            <a href="/appointments/edit/<%= app.appointmentID %>"><button>Edit</button></a>
-                            <% if (app.status === 'Pending') { %>
-                                <form action="/appointments/<%= app.appointmentID %>/approve" method="POST" style="display:inline;">
-                                    <button type="submit">Approve</button>
-                                </form>
-                            <% } %>
-                            <form action="/appointments/delete/<%= app.appointmentID %>" method="POST" style="display:inline;">
-                                <button type="submit" onclick="return confirm('Are you sure?')">Cancel Appointment</button>
-                            </form>
-                        </td>
-                    </tr>
-                <% }) %>
-            </tbody>
-        </table>
-    <% } %>
+    const getQueueStatusClass = (status) => {
+        if (status === 'Waiting') return 'status-badge--pending';
+        if (status === 'Serving') return 'status-badge--approved';
+        if (status === 'Completed') return 'status-badge--completed';
+        if (status === 'Cancelled') return 'status-badge--cancelled';
+        return 'status-badge--muted';
+    };
+%>
+
+<main class="page-shell">
+    <section class="page-header-card">
+        <div>
+            <p class="page-kicker">Staff Appointments</p>
+            <h1 class="page-title">Customer Appointments</h1>
+            <p class="page-subtitle">Review bookings, update appointment details, and monitor queue status.</p>
+        </div>
+        <a href="/appointments/book" class="btn btn-primary page-header-action">Book New Appointment</a>
+    </section>
+
+    <section class="summary-grid" aria-label="Appointment summary">
+        <article class="summary-card">
+            <span class="summary-card__label">Total Appointments</span>
+            <strong class="summary-card__value"><%= appointmentSummary.total %></strong>
+        </article>
+        <article class="summary-card">
+            <span class="summary-card__label">Pending</span>
+            <strong class="summary-card__value text-warning"><%= appointmentSummary.pending %></strong>
+        </article>
+        <article class="summary-card">
+            <span class="summary-card__label">Approved</span>
+            <strong class="summary-card__value text-success"><%= appointmentSummary.approved %></strong>
+        </article>
+        <article class="summary-card">
+            <span class="summary-card__label">In Queue</span>
+            <strong class="summary-card__value text-primary"><%= appointmentSummary.inQueue %></strong>
+        </article>
+    </section>
+
+    <section class="table-card">
+        <div class="table-card__header">
+            <div>
+                <h2 class="table-card__title">Appointment List</h2>
+                <p class="table-card__subtitle">Showing customer bookings and queue linkage.</p>
+            </div>
+        </div>
+
+        <% if (!appointments || appointments.length === 0) { %>
+            <div class="empty-state">
+                <h3>No appointments found.</h3>
+                <p>New customer bookings will appear here.</p>
+                <a href="/appointments/book" class="btn btn-primary">Book New Appointment</a>
+            </div>
+        <% } else { %>
+            <div class="table-responsive">
+                <table class="table appointment-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Customer</th>
+                            <th scope="col">Service</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Time</th>
+                            <th scope="col">Queue Number</th>
+                            <th scope="col">Queue Status</th>
+                            <th scope="col">Notes</th>
+                            <th scope="col">Appointment Status</th>
+                            <th scope="col" class="text-lg-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% appointments.forEach(app => { %>
+                            <tr>
+                                <td>
+                                    <div class="customer-cell">
+                                        <strong><%= app.customer_name || 'Unknown customer' %></strong>
+                                        <span><%= app.customer_email || 'No email provided' %></span>
+                                    </div>
+                                </td>
+                                <td class="service-cell"><%= app.serviceName || 'Unknown service' %></td>
+                                <td><%= app.formattedDate %></td>
+                                <td><%= app.formattedTime %></td>
+                                <td>
+                                    <% if (app.queueNumber) { %>
+                                        <span class="queue-number-badge"><%= formatQueueNumber(app.queueNumber) %></span>
+                                    <% } else { %>
+                                        <span class="text-muted">Not assigned</span>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <span class="status-badge <%= getQueueStatusClass(app.queueStatus) %>">
+                                        <%= app.queueStatus || 'Not in queue' %>
+                                    </span>
+                                </td>
+                                <td class="notes-cell"><%= app.remarks || 'None' %></td>
+                                <td>
+                                    <span class="status-badge <%= getAppointmentStatusClass(app.status) %>">
+                                        <%= app.status || 'Unknown' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-group">
+                                        <a href="/appointments/edit/<%= app.appointmentID %>" class="btn btn-sm btn-outline-primary">Edit</a>
+
+                                        <% if (app.status === 'Pending') { %>
+                                            <form action="/appointments/<%= app.appointmentID %>/approve" method="POST">
+                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                        <% } %>
+
+                                        <% if (!['Cancelled', 'Completed'].includes(app.status)) { %>
+                                            <form action="/appointments/delete/<%= app.appointmentID %>" method="POST">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to cancel this appointment?')">Cancel</button>
+                                            </form>
+                                        <% } %>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

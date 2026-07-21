@@ -10,71 +10,89 @@
 <body class="bg-light">
 <%- include('../partials/navbar', { user }) %>
 
-<main class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<main class="admin-page-shell">
+    <div class="admin-page-header">
         <div>
-            <h1 class="h3 mb-1">User Management</h1>
-            <p class="text-muted mb-0">View users and update their roles or account status.</p>
+            <p class="page-kicker">Admin</p>
+            <h1 class="admin-page-title">User Management</h1>
+            <p class="admin-page-subtitle">View, create and manage user accounts, roles and account status.</p>
         </div>
+        <a href="/admin/users/create" class="btn btn-primary admin-header-action">Create User Account</a>
     </div>
 
     <% if (error) { %>
-        <div class="alert alert-danger"><%= error %></div>
+        <div class="alert alert-danger admin-alert" role="alert"><%= error %></div>
     <% } %>
     <% if (success) { %>
-        <div class="alert alert-success"><%= success %></div>
+        <div class="alert alert-success admin-alert" role="alert"><%= success %></div>
     <% } %>
 
-    <div class="table-responsive bg-white border rounded">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Contact</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Update</th>
-                    <th>Delete</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% users.forEach(item => { %>
+    <section class="admin-card">
+        <div class="table-card__header">
+            <div>
+                <h2 class="table-card__title">Accounts</h2>
+                <p class="table-card__subtitle"><%= users.length %> user<%= users.length === 1 ? '' : 's' %> currently listed</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table user-table align-middle mb-0">
+                <thead>
                     <tr>
-                        <td><%= item.id %></td>
-                        <td><%= item.username %></td>
-                        <td><%= item.email %></td>
-                        <td><%= item.contact || 'N/A' %></td>
-                        <td>
-                            <form action="/admin/users/<%= item.id %>/update" method="POST" class="d-flex gap-2">
-                                <select name="role" class="form-select form-select-sm">
-                                    <% ['Staff', 'Admin'].forEach(role => { %>
-                                        <option value="<%= role %>" <%= item.role === role ? 'selected' : '' %>><%= role %></option>
-                                    <% }) %>
-                                </select>
-                        </td>
-                        <td>
-                                <select name="accountStatus" class="form-select form-select-sm">
-                                    <% ['Active', 'Inactive', 'Blocked'].forEach(status => { %>
-                                        <option value="<%= status %>" <%= item.accountStatus === status ? 'selected' : '' %>><%= status %></option>
-                                    <% }) %>
-                                </select>
-                        </td>
-                        <td>
-                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                            </form>
-                        </td>
-                        <td>
-                            <form action="/admin/users/<%= item.id %>/delete" method="POST" onsubmit="return confirm('Delete this user?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                            </form>
-                        </td>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Contact</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
-                <% }) %>
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    <% users.forEach(item => { %>
+                        <tr>
+                            <td class="text-muted fw-semibold">#<%= item.id %></td>
+                            <td>
+                                <div class="user-meta">
+                                    <strong><%= item.username %></strong>
+                                    <span><%= item.address || 'No address provided' %></span>
+                                </div>
+                            </td>
+                            <td class="user-email"><%= item.email %></td>
+                            <td><%= item.contact || 'N/A' %></td>
+                            <td>
+                                <span class="role-badge role-badge--<%= String(item.displayRole || 'unknown').toLowerCase() %>"><%= item.displayRole || item.role %></span>
+                            </td>
+                            <td>
+                                <span class="status-badge status-badge--<%= String(item.accountStatus || 'muted').toLowerCase() %>"><%= item.accountStatus || 'N/A' %></span>
+                            </td>
+                            <td>
+                                <div class="user-actions">
+                                    <form action="/admin/users/<%= item.id %>/update" method="POST" class="user-update-form">
+                                        <select name="role" class="form-select form-select-sm" aria-label="Role for <%= item.username %>">
+                                            <% roleOptions.forEach(role => { %>
+                                                <option value="<%= role %>" <%= item.displayRole === role ? 'selected' : '' %>><%= role %></option>
+                                            <% }) %>
+                                        </select>
+                                        <select name="accountStatus" class="form-select form-select-sm" aria-label="Status for <%= item.username %>">
+                                            <% statusOptions.forEach(status => { %>
+                                                <option value="<%= status %>" <%= item.accountStatus === status ? 'selected' : '' %>><%= status %></option>
+                                            <% }) %>
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                    </form>
+                                    <form action="/admin/users/<%= item.id %>/delete" method="POST" onsubmit="return confirm('Delete this user account?');">
+                                        <button type="submit" class="btn btn-sm btn-danger-outline">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

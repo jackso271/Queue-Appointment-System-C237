@@ -37,6 +37,18 @@
             <dt class="col-sm-3">Status</dt>
             <dd class="col-sm-9"><%= appointment.status %></dd>
 
+            <dt class="col-sm-3">Queue Number</dt>
+            <dd class="col-sm-9">
+                <% if (appointment.queueNumber) { %>
+                    <span class="queue-number-badge">Q<%= String(appointment.queueNumber).padStart(3, '0') %></span>
+                <% } else { %>
+                    Not assigned
+                <% } %>
+            </dd>
+
+            <dt class="col-sm-3">Queue Status</dt>
+            <dd class="col-sm-9"><%= appointment.queueStatus || 'Not assigned' %></dd>
+
             <dt class="col-sm-3">Remarks</dt>
             <dd class="col-sm-9"><%= appointment.remarks || 'None' %></dd>
         </dl>

@@ -1,0 +1,27 @@
+<%
+    const isActive = (path) => currentPath === path;
+%>
+<nav class="navbar navbar-expand-lg navbar-dark qe-navbar qe-navbar--public">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/appointments/book">QueueEase</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link <%= isActive('/appointments/book') ? 'active' : '' %>" href="/appointments/book">Book Appointment</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <%= isActive('/booking-details') ? 'active' : '' %>" href="/booking-details">Check Booking</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <%= isActive('/queue/status') ? 'active' : '' %>" href="/queue/status">My Queue Status</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <%= isActive('/login') ? 'active' : '' %>" href="/login">Staff / Admin Login</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

@@ -12,6 +12,14 @@
 
 <main class="container py-4">
     <h1 class="h3 mb-3">Staff Dashboard</h1>
+    <div class="bg-white border rounded p-3 mb-3">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/appointments" class="btn btn-primary">View Appointments</a>
+            <a href="/queue/admin" class="btn btn-outline-primary">Queue Management</a>
+            <a href="/staff/personal-report" class="btn btn-outline-primary">Personal Report</a>
+        </div>
+    </div>
+
     <div class="row g-3">
         <div class="col-md-4">
             <div class="bg-white border rounded p-3">
@@ -44,7 +52,9 @@
                         <tr>
                             <th>Date</th>
                             <th>Time</th>
+                            <th>Customer</th>
                             <th>Service</th>
+                            <th>Queue</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -53,7 +63,15 @@
                             <tr>
                                 <td><%= item.appointmentDate %></td>
                                 <td><%= item.appointmentTime %></td>
+                                <td><%= item.customerName || 'Unknown customer' %></td>
                                 <td><%= item.serviceName || 'N/A' %></td>
+                                <td>
+                                    <% if (item.queueNumber) { %>
+                                        <span class="queue-number-badge"><%= formatQueueNumber(item.queueNumber) %></span>
+                                    <% } else { %>
+                                        N/A
+                                    <% } %>
+                                </td>
                                 <td><%= item.status %></td>
                             </tr>
                         <% }) %>

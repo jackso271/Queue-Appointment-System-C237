@@ -3,27 +3,31 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const mysql = require('mysql2');
+const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const flash = require('connect-flash');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const connection = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'queue_appointment_system'
+// Database connection
+const db = mysql.createConnection({
+    host: 'c237-eaint-mysql.mysql.database.azure.com',
+    user: 'c237_001',
+    password: 'c237001@2026!',
+    database: 'c237_001_teamaplus',
+    //It tells your app to talk to the Azure database using SSL, which is required by Azure for secure connections.
+    //Which Azure requires to use SSL for secure connections to the database. The rejectUnauthorized: true option ensures that the SSL certificate is verified.
+    ssl: {
+        rejectUnauthorized: true
+    }
 });
 
-connection.connect((error) => {
-    if (error) {
-        console.error('Database connection error. Please check your MySQL settings.');
-        return;
+db.connect((err) => {
+    if (err) {
+        throw err;
     }
-
-    console.log('Connected to MySQL database.');
+    console.log('Connected to database');
 });
 
 app.set('view engine', 'ejs');
@@ -43,6 +47,8 @@ app.use(flash());
 
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
+    res.locals.currentUser = req.session.user || null;
+    res.locals.currentPath = req.path;
     res.locals.success = req.flash('success')[0] || null;
     res.locals.error = req.flash('error')[0] || null;
     next();
@@ -57,6 +63,28 @@ function isLoggedIn(req, res, next) {
     next();
 }
 
+function normalizeRole(role) {
+    if (!role) {
+        return '';
+    }
+
+    const value = String(role).toLowerCase();
+
+    if (value === 'admin') {
+        return 'Admin';
+    }
+
+    if (value === 'staff') {
+        return 'Staff';
+    }
+
+    if (value === 'customer' || value === 'user') {
+        return 'Customer';
+    }
+
+    return String(role);
+}
+
 function checkRole(role) {
     return (req, res, next) => {
         if (!req.session.user) {
@@ -64,7 +92,7 @@ function checkRole(role) {
             return res.redirect('/login');
         }
 
-        if (req.session.user.role !== role) {
+        if (normalizeRole(req.session.user.role) !== normalizeRole(role)) {
             return res.status(403).send('You do not have permission to access this page.');
         }
 
@@ -79,7 +107,7 @@ function checkAnyRole(roles) {
             return res.redirect('/login');
         }
 
-        if (!roles.includes(req.session.user.role)) {
+        if (!roles.map(normalizeRole).includes(normalizeRole(req.session.user.role))) {
             return res.status(403).send('You do not have permission to access this page.');
         }
 
@@ -87,8 +115,13 @@ function checkAnyRole(roles) {
     };
 }
 
+const requireLogin = isLoggedIn;
+const requireStaff = checkRole('Staff');
+const requireAdmin = checkRole('Admin');
+const requireStaffOrAdmin = checkAnyRole(['Staff', 'Admin']);
+
 function currentUserID(req) {
-    return req.session.user ? req.session.user.id : null;
+    return req.session.user ? (req.session.user.userID || req.session.user.id) : null;
 }
 
 function redirectAfterLogin(req, res) {
@@ -96,15 +129,122 @@ function redirectAfterLogin(req, res) {
         return res.redirect('/login');
     }
 
-    if (req.session.user.role === 'Admin') {
-        return res.redirect('/admin');
+    if (normalizeRole(req.session.user.role) === 'Admin') {
+        return res.redirect('/admin/dashboard');
     }
 
-    if (req.session.user.role === 'Staff') {
-        return res.redirect('/staff');
+    if (normalizeRole(req.session.user.role) === 'Staff') {
+        return res.redirect('/staff/dashboard');
     }
 
     return res.redirect('/login');
+}
+
+function isBcryptHash(value) {
+    return typeof value === 'string' && /^\$2[aby]\$\d{2}\$/.test(value);
+}
+
+function logDatabaseError(area, error) {
+    console.error(`${area} database error`);
+    console.error('Code:', error.code);
+    console.error('Errno:', error.errno);
+    console.error('SQL State:', error.sqlState);
+    console.error('Message:', error.sqlMessage || error.message);
+}
+
+const ADMIN_USER_ROLE_OPTIONS = ['Staff', 'Admin'];
+const ADMIN_USER_STATUS_OPTIONS = ['Active', 'Inactive', 'Blocked'];
+const PASSWORD_RULE_MESSAGE = 'Password must be at least 8 characters and include uppercase, lowercase, number and special character.';
+
+function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidContact(value) {
+    return /^[0-9+\-\s()]{8,20}$/.test(value);
+}
+
+function isStrongPassword(value) {
+    return typeof value === 'string'
+        && value.length >= 8
+        && /[A-Z]/.test(value)
+        && /[a-z]/.test(value)
+        && /\d/.test(value)
+        && /[^A-Za-z0-9]/.test(value);
+}
+
+function renderCreateUserForm(req, res, statusCode, error, formData = {}) {
+    return res.status(statusCode).render('admin/create-user', {
+        user: req.session.user,
+        error,
+        success: res.locals.success,
+        formData,
+        roleOptions: ADMIN_USER_ROLE_OPTIONS,
+        statusOptions: ADMIN_USER_STATUS_OPTIONS
+    });
+}
+
+function formatQueueNumber(value) {
+    return `Q${String(value || 0).padStart(3, '0')}`;
+}
+
+function formatDisplayDate(value) {
+    if (!value) {
+        return 'Not set';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+
+    return date.toLocaleDateString('en-SG', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+}
+
+function formatDisplayTime(value) {
+    if (!value) {
+        return 'Not set';
+    }
+
+    const rawValue = String(value);
+    const timeMatch = rawValue.match(/^(\d{1,2}):(\d{2})/);
+
+    if (!timeMatch) {
+        return rawValue;
+    }
+
+    const hours = Number(timeMatch[1]);
+    const minutes = timeMatch[2];
+    const suffix = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+
+    return `${displayHours}:${minutes} ${suffix}`;
+}
+
+function rememberPublicAppointment(req, appointmentID) {
+    req.session.publicAppointments = req.session.publicAppointments || [];
+
+    if (!req.session.publicAppointments.includes(Number(appointmentID))) {
+        req.session.publicAppointments.push(Number(appointmentID));
+    }
+}
+
+function canViewPublicAppointment(req, row) {
+    if (req.session.user && ['Staff', 'Admin'].includes(normalizeRole(req.session.user.role))) {
+        return true;
+    }
+
+    const knownAppointments = req.session.publicAppointments || [];
+    if (knownAppointments.includes(Number(row.appointmentID))) {
+        return true;
+    }
+
+    const submittedEmail = (req.query.email || (req.body && req.body.customerEmail) || '').trim().toLowerCase();
+    return submittedEmail && submittedEmail === String(row.customerEmail || '').toLowerCase();
 }
 
 app.get('/', (req, res) => {
@@ -122,7 +262,8 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    const { email, password } = req.body;
+    const email = (req.body.email || '').trim().toLowerCase();
+    const { password } = req.body;
 
     if (!email || !password) {
         req.flash('error', 'Email and password are required.');
@@ -136,34 +277,64 @@ app.post('/login', (req, res) => {
         LIMIT 1
     `;
 
-    connection.query(sql, [email], (error, results) => {
+    db.query(sql, [email], (error, results) => {
         if (error) {
-            console.error('Login query error:', error.message);
+            logDatabaseError('Login query', error);
             return res.status(500).send('Unable to login');
         }
 
-        if (results.length === 0 || results[0].password !== password) {
+        if (results.length === 0) {
             req.flash('error', 'Invalid email or password.');
             return res.redirect('/login');
         }
 
-        if (!['Staff', 'Admin'].includes(results[0].role)) {
+        const user = results[0];
+        const role = normalizeRole(user.role);
+
+        if (!['Staff', 'Admin'].includes(role)) {
             req.flash('error', 'Only staff and admin accounts can login.');
             return res.redirect('/login');
         }
 
-        if (results[0].accountStatus !== 'Active') {
+        if (user.accountStatus !== 'Active') {
             return res.status(403).send('Your account is not active.');
         }
 
-        req.session.user = {
-            id: results[0].id,
-            username: results[0].username,
-            email: results[0].email,
-            role: results[0].role
-        };
+        if (!isBcryptHash(user.password)) {
+            console.error('Login password format error: stored password is not a bcrypt hash for user ID:', user.id);
+            req.flash('error', 'This account requires a password reset before login.');
+            return res.redirect('/login');
+        }
 
-        return redirectAfterLogin(req, res);
+        bcrypt.compare(password, user.password, (compareError, passwordMatches) => {
+            if (compareError) {
+                console.error('Password comparison error:', compareError.message);
+                return res.status(500).send('Unable to login');
+            }
+
+            if (!passwordMatches) {
+                req.flash('error', 'Invalid email or password.');
+                return res.redirect('/login');
+            }
+
+            req.session.user = {
+                userID: user.id,
+                id: user.id,
+                name: user.username,
+                username: user.username,
+                email: user.email,
+                role
+            };
+
+            return req.session.save((saveError) => {
+                if (saveError) {
+                    console.error('Session save error:', saveError.message);
+                    return res.status(500).send('Unable to login');
+                }
+
+                return redirectAfterLogin(req, res);
+            });
+        });
     });
 });
 
@@ -179,7 +350,7 @@ app.post('/signup', (req, res) => {
 
 app.post('/logout', (req, res) => {
     req.session.destroy(() => {
-        res.redirect('/');
+        res.redirect('/login');
     });
 });
 
@@ -200,7 +371,7 @@ app.get('/user/profile', isLoggedIn, (req, res) => {
         WHERE id = ?
     `;
 
-    connection.query(sql, [currentUserID(req)], (error, rows) => {
+    db.query(sql, [currentUserID(req)], (error, rows) => {
         if (error) {
             console.error('Profile query error:', error.message);
             return res.status(500).send('Unable to load profile');
@@ -222,7 +393,7 @@ app.get('/user/edit', isLoggedIn, (req, res) => {
         WHERE id = ?
     `;
 
-    connection.query(sql, [currentUserID(req)], (error, rows) => {
+    db.query(sql, [currentUserID(req)], (error, rows) => {
         if (error) {
             console.error('Edit profile query error:', error.message);
             return res.status(500).send('Unable to load profile');
@@ -244,7 +415,7 @@ app.post('/user/edit', isLoggedIn, (req, res) => {
         WHERE id = ?
     `;
 
-    connection.query(sql, [username, address, contact, currentUserID(req)], (error) => {
+    db.query(sql, [username, address, contact, currentUserID(req)], (error) => {
         if (error) {
             console.error('Update profile error:', error.message);
             req.flash('error', 'Unable to update profile.');
@@ -279,37 +450,59 @@ app.post('/user/change-password', isLoggedIn, (req, res) => {
 
     const selectSql = 'SELECT password FROM users WHERE id = ?';
 
-    connection.query(selectSql, [currentUserID(req)], (selectError, rows) => {
+    db.query(selectSql, [currentUserID(req)], (selectError, rows) => {
         if (selectError) {
             console.error('Password check error:', selectError.message);
             return res.status(500).send('Unable to update password');
         }
 
-        if (rows.length === 0 || rows[0].password !== currentPassword) {
-            req.flash('error', 'Current password is incorrect.');
+        if (rows.length === 0 || !isBcryptHash(rows[0].password)) {
+            req.flash('error', 'Unable to verify the current password.');
             return res.redirect('/user/change-password');
         }
 
-        const updateSql = 'UPDATE users SET password = ? WHERE id = ?';
-
-        connection.query(updateSql, [newPassword, currentUserID(req)], (error) => {
-            if (error) {
-                console.error('Password update error:', error.message);
+        bcrypt.compare(currentPassword, rows[0].password, (compareError, passwordMatches) => {
+            if (compareError) {
+                console.error('Password comparison error:', compareError.message);
                 return res.status(500).send('Unable to update password');
             }
 
-            req.flash('success', 'Password updated successfully.');
-            res.redirect('/user/profile');
+            if (!passwordMatches) {
+                req.flash('error', 'Current password is incorrect.');
+                return res.redirect('/user/change-password');
+            }
+
+            bcrypt.hash(newPassword, 10, (hashError, hashedPassword) => {
+                if (hashError) {
+                    console.error('Password hash error:', hashError.message);
+                    return res.status(500).send('Unable to update password');
+                }
+
+                const updateSql = 'UPDATE users SET password = ? WHERE id = ?';
+
+                db.query(updateSql, [hashedPassword, currentUserID(req)], (error) => {
+                    if (error) {
+                        console.error('Password update error:', error.message);
+                        return res.status(500).send('Unable to update password');
+                    }
+
+                    req.flash('success', 'Password updated successfully.');
+                    return res.redirect('/user/profile');
+                });
+            });
         });
     });
 });
 
-app.get('/admin', checkRole('Admin'), (req, res) => {
+function renderAdminDashboard(req, res) {
     const statisticsSql = `
         SELECT
             (SELECT COUNT(*) FROM users) AS totalUsers,
+            (SELECT COUNT(*) FROM staff) AS totalStaff,
+            (SELECT COUNT(*) FROM staff WHERE availabilityStatus = 'Available') AS activeStaff,
             (SELECT COUNT(*) FROM services WHERE status = 'Available') AS availableServices,
             (SELECT COUNT(*) FROM appointments) AS totalAppointments,
+            (SELECT COUNT(*) FROM appointments WHERE appointmentDate = CURDATE()) AS todayAppointments,
             (SELECT COUNT(*) FROM appointments WHERE status = 'Completed') AS completedAppointments,
             (SELECT COUNT(*) FROM \`queue\` WHERE queueStatus = 'Waiting') AS waitingCustomers,
             (SELECT COUNT(*) FROM feedback) AS totalFeedback,
@@ -318,27 +511,28 @@ app.get('/admin', checkRole('Admin'), (req, res) => {
     const statusSql = 'SELECT status, COUNT(*) AS total FROM appointments GROUP BY status ORDER BY status';
     const feedbackSql = `
         SELECT f.feedbackID, f.rating, f.comments, f.submittedDate,
-               a.customerName, s.serviceName
+               u.username AS customerName, s.serviceName
         FROM feedback f
         INNER JOIN appointments a ON f.appointmentID = a.appointmentID
+        INNER JOIN users u ON a.userID = u.id
         INNER JOIN services s ON a.serviceID = s.serviceID
         ORDER BY f.submittedDate DESC
         LIMIT 5
     `;
 
-    connection.query(statisticsSql, (statisticsError, statisticsRows) => {
+    db.query(statisticsSql, (statisticsError, statisticsRows) => {
         if (statisticsError) {
             console.error('Admin statistics error:', statisticsError.message);
             return res.status(500).send('Unable to load admin dashboard');
         }
 
-        connection.query(statusSql, (statusError, appointmentStatuses) => {
+        db.query(statusSql, (statusError, appointmentStatuses) => {
             if (statusError) {
                 console.error('Admin status error:', statusError.message);
                 return res.status(500).send('Unable to load admin dashboard');
             }
 
-            connection.query(feedbackSql, (feedbackError, recentFeedback) => {
+            db.query(feedbackSql, (feedbackError, recentFeedback) => {
                 if (feedbackError) {
                     console.error('Admin feedback error:', feedbackError.message);
                     return res.status(500).send('Unable to load admin dashboard');
@@ -353,7 +547,10 @@ app.get('/admin', checkRole('Admin'), (req, res) => {
             });
         });
     });
-});
+}
+
+app.get('/admin', requireAdmin, (req, res) => res.redirect('/admin/dashboard'));
+app.get('/admin/dashboard', requireAdmin, renderAdminDashboard);
 
 app.get('/admin/users', checkRole('Admin'), (req, res) => {
     const sql = `
@@ -362,75 +559,268 @@ app.get('/admin/users', checkRole('Admin'), (req, res) => {
         ORDER BY username
     `;
 
-    connection.query(sql, (error, users) => {
+    db.query(sql, (error, users) => {
         if (error) {
             console.error('Users query error:', error.message);
             return res.status(500).send('Unable to load users');
         }
 
         res.render('admin/users', {
-            users,
+            users: users.map(item => ({
+                ...item,
+                displayRole: normalizeRole(item.role)
+            })),
             user: req.session.user,
             error: res.locals.error,
-            success: res.locals.success
+            success: res.locals.success,
+            roleOptions: ADMIN_USER_ROLE_OPTIONS,
+            statusOptions: ADMIN_USER_STATUS_OPTIONS
+        });
+    });
+});
+
+app.get('/admin/users/create', checkRole('Admin'), (req, res) => {
+    renderCreateUserForm(req, res, 200, res.locals.error, {
+        username: '',
+        email: '',
+        contact: '',
+        address: '',
+        role: 'Staff',
+        accountStatus: 'Active'
+    });
+});
+
+app.post('/admin/users/create', checkRole('Admin'), (req, res) => {
+    const formData = {
+        username: (req.body.username || '').trim(),
+        email: (req.body.email || '').trim().toLowerCase(),
+        contact: (req.body.contact || '').trim(),
+        address: (req.body.address || '').trim(),
+        role: (req.body.role || '').trim(),
+        accountStatus: (req.body.accountStatus || '').trim()
+    };
+    const password = req.body.password || '';
+    const confirmPassword = req.body.confirmPassword || '';
+
+    if (!formData.username) {
+        return renderCreateUserForm(req, res, 400, 'Username is required.', formData);
+    }
+
+    if (!formData.email || !isValidEmail(formData.email)) {
+        return renderCreateUserForm(req, res, 400, 'Email address is invalid.', formData);
+    }
+
+    if (!formData.contact || !isValidContact(formData.contact)) {
+        return renderCreateUserForm(req, res, 400, 'Contact number is invalid.', formData);
+    }
+
+    if (!formData.address) {
+        return renderCreateUserForm(req, res, 400, 'Address is required.', formData);
+    }
+
+    if (!ADMIN_USER_ROLE_OPTIONS.includes(formData.role)) {
+        return renderCreateUserForm(req, res, 400, 'Role is invalid.', formData);
+    }
+
+    if (!ADMIN_USER_STATUS_OPTIONS.includes(formData.accountStatus)) {
+        return renderCreateUserForm(req, res, 400, 'Account status is invalid.', formData);
+    }
+
+    if (!password) {
+        return renderCreateUserForm(req, res, 400, 'Password is required.', formData);
+    }
+
+    if (password !== confirmPassword) {
+        return renderCreateUserForm(req, res, 400, 'Passwords do not match.', formData);
+    }
+
+    if (!isStrongPassword(password)) {
+        return renderCreateUserForm(req, res, 400, PASSWORD_RULE_MESSAGE, formData);
+    }
+
+    const duplicateSql = 'SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1';
+
+    db.query(duplicateSql, [formData.email], (duplicateError, rows) => {
+        if (duplicateError) {
+            logDatabaseError('Admin create user duplicate check', duplicateError);
+            return renderCreateUserForm(req, res, 500, 'Unable to create user account.', formData);
+        }
+
+        if (rows.length > 0) {
+            return renderCreateUserForm(req, res, 400, 'Email address already exists.', formData);
+        }
+
+        bcrypt.hash(password, 10, (hashError, hashedPassword) => {
+            if (hashError) {
+                console.error('Admin create user password hash error:', hashError.message);
+                return renderCreateUserForm(req, res, 500, 'Unable to create user account.', formData);
+            }
+
+            const insertSql = `
+                INSERT INTO users
+                    (username, email, password, address, contact, role, accountStatus)
+                VALUES
+                    (?, ?, ?, ?, ?, ?, ?)
+            `;
+            const values = [
+                formData.username,
+                formData.email,
+                hashedPassword,
+                formData.address,
+                formData.contact,
+                formData.role,
+                formData.accountStatus
+            ];
+
+            db.query(insertSql, values, (insertError) => {
+                if (insertError) {
+                    logDatabaseError('Admin create user insert', insertError);
+                    return renderCreateUserForm(req, res, 500, 'Unable to create user account.', formData);
+                }
+
+                req.flash('success', 'User account created successfully.');
+                return res.redirect('/admin/users');
+            });
         });
     });
 });
 
 app.post('/admin/users/:id/update', checkRole('Admin'), (req, res) => {
-    const { role, accountStatus } = req.body;
-    const sql = 'UPDATE users SET role = ?, accountStatus = ? WHERE id = ?';
+    const role = (req.body.role || '').trim();
+    const accountStatus = (req.body.accountStatus || '').trim();
+    const targetUserID = Number(req.params.id);
 
-    connection.query(sql, [role, accountStatus, req.params.id], (error) => {
-        if (error) {
-            console.error('User update error:', error.message);
-            req.flash('error', 'Unable to update user.');
+    if (!ADMIN_USER_ROLE_OPTIONS.includes(role)) {
+        req.flash('error', 'Role is invalid.');
+        return res.redirect('/admin/users');
+    }
+
+    if (!ADMIN_USER_STATUS_OPTIONS.includes(accountStatus)) {
+        req.flash('error', 'Account status is invalid.');
+        return res.redirect('/admin/users');
+    }
+
+    if (targetUserID === Number(currentUserID(req)) && (role !== 'Admin' || accountStatus !== 'Active')) {
+        req.flash('error', 'You cannot change your own admin role or active account status.');
+        return res.redirect('/admin/users');
+    }
+
+    const safetySql = `
+        SELECT
+            (SELECT COUNT(*) FROM users WHERE LOWER(role) = 'admin' AND accountStatus = 'Active') AS activeAdminCount,
+            role,
+            accountStatus
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    `;
+
+    db.query(safetySql, [targetUserID], (safetyError, rows) => {
+        if (safetyError) {
+            logDatabaseError('Admin user update safety check', safetyError);
+            req.flash('error', 'Unable to update user account.');
             return res.redirect('/admin/users');
         }
 
-        req.flash('success', 'User updated successfully.');
-        res.redirect('/admin/users');
+        if (rows.length === 0) {
+            req.flash('error', 'User account was not found.');
+            return res.redirect('/admin/users');
+        }
+
+        const currentRole = normalizeRole(rows[0].role);
+        const isTargetActiveAdmin = currentRole === 'Admin' && rows[0].accountStatus === 'Active';
+        const willRemainActiveAdmin = role === 'Admin' && accountStatus === 'Active';
+
+        if (isTargetActiveAdmin && !willRemainActiveAdmin && Number(rows[0].activeAdminCount) <= 1) {
+            req.flash('error', 'You cannot remove or disable the last active Admin account.');
+            return res.redirect('/admin/users');
+        }
+
+        const sql = 'UPDATE users SET role = ?, accountStatus = ? WHERE id = ?';
+
+        db.query(sql, [role, accountStatus, targetUserID], (error) => {
+            if (error) {
+                logDatabaseError('Admin user update', error);
+                req.flash('error', 'Unable to update user account.');
+                return res.redirect('/admin/users');
+            }
+
+            req.flash('success', 'User account updated successfully.');
+            res.redirect('/admin/users');
+        });
     });
 });
 
 app.post('/admin/users/:id/delete', checkRole('Admin'), (req, res) => {
-    if (Number(req.params.id) === Number(currentUserID(req))) {
+    const targetUserID = Number(req.params.id);
+
+    if (targetUserID === Number(currentUserID(req))) {
         req.flash('error', 'You cannot delete your own account.');
         return res.redirect('/admin/users');
     }
 
-    const sql = 'DELETE FROM users WHERE id = ?';
+    const safetySql = `
+        SELECT
+            (SELECT COUNT(*) FROM users WHERE LOWER(role) = 'admin' AND accountStatus = 'Active') AS activeAdminCount,
+            role,
+            accountStatus
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    `;
 
-    connection.query(sql, [req.params.id], (error) => {
-        if (error) {
-            console.error('User delete error:', error.message);
-            req.flash('error', 'Unable to delete user. The user may have appointments or feedback.');
+    db.query(safetySql, [targetUserID], (safetyError, rows) => {
+        if (safetyError) {
+            logDatabaseError('Admin user delete safety check', safetyError);
+            req.flash('error', 'Unable to delete user account.');
             return res.redirect('/admin/users');
         }
 
-        req.flash('success', 'User deleted successfully.');
-        res.redirect('/admin/users');
+        if (rows.length === 0) {
+            req.flash('error', 'User account was not found.');
+            return res.redirect('/admin/users');
+        }
+
+        if (normalizeRole(rows[0].role) === 'Admin' && rows[0].accountStatus === 'Active' && Number(rows[0].activeAdminCount) <= 1) {
+            req.flash('error', 'You cannot delete the last active Admin account.');
+            return res.redirect('/admin/users');
+        }
+
+        const sql = 'DELETE FROM users WHERE id = ?';
+
+        db.query(sql, [targetUserID], (error) => {
+            if (error) {
+                logDatabaseError('Admin user delete', error);
+                req.flash('error', 'Unable to delete user. The user may have appointments or feedback.');
+                return res.redirect('/admin/users');
+            }
+
+            req.flash('success', 'User account deleted successfully.');
+            res.redirect('/admin/users');
+        });
     });
 });
 
-app.get('/staff', checkRole('Staff'), (req, res) => {
+function renderStaffDashboard(req, res) {
     const appointmentsSql = `
-        SELECT a.*, s.serviceName
+        SELECT a.appointmentID, a.appointmentDate, a.appointmentTime, a.status,
+               u.username AS customerName, u.email AS customerEmail, u.contact AS customerPhone,
+               s.serviceName, q.queueNumber, q.queueStatus
         FROM appointments a
-        INNER JOIN staff st ON a.staffID = st.staffID
+        INNER JOIN users u ON a.userID = u.id
         LEFT JOIN services s ON a.serviceID = s.serviceID
-        WHERE st.email = ?
+        LEFT JOIN \`queue\` q ON a.appointmentID = q.appointmentID
         ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
         LIMIT 10
     `;
     const waitingSql = "SELECT COUNT(*) AS waitingCount FROM `queue` WHERE queueStatus = 'Waiting'";
-    connection.query(appointmentsSql, [req.session.user.email], (appointmentError, appointments) => {
+    db.query(appointmentsSql, (appointmentError, appointments) => {
         if (appointmentError) {
             console.error('Staff dashboard error:', appointmentError.message);
             return res.status(500).send('Unable to load staff dashboard');
         }
 
-        connection.query(waitingSql, (waitingError, waitingRows) => {
+        db.query(waitingSql, (waitingError, waitingRows) => {
             if (waitingError) {
                 console.error('Waiting queue count error:', waitingError.message);
                 return res.status(500).send('Unable to load staff dashboard');
@@ -439,13 +829,11 @@ app.get('/staff', checkRole('Staff'), (req, res) => {
             const completedByEmailSql = `
                 SELECT COUNT(*) AS completedToday
                 FROM appointments a
-                INNER JOIN staff st ON a.staffID = st.staffID
-                WHERE st.email = ?
-                AND a.status = 'Completed'
+                WHERE a.status = 'Completed'
                 AND a.appointmentDate = CURDATE()
             `;
 
-            connection.query(completedByEmailSql, [req.session.user.email], (completedError, completedRows) => {
+            db.query(completedByEmailSql, (completedError, completedRows) => {
                 if (completedError) {
                     console.error('Completed count error:', completedError.message);
                     return res.status(500).send('Unable to load staff dashboard');
@@ -456,12 +844,16 @@ app.get('/staff', checkRole('Staff'), (req, res) => {
                     waitingCount: waitingRows[0].waitingCount || 0,
                     completedToday: completedRows[0].completedToday || 0,
                     appointments,
+                    formatQueueNumber,
                     user: req.session.user
                 });
             });
         });
     });
-});
+}
+
+app.get('/staff', requireStaff, (req, res) => res.redirect('/staff/dashboard'));
+app.get('/staff/dashboard', requireStaff, renderStaffDashboard);
 
 app.get('/staff/personal-report', checkRole('Staff'), (req, res) => {
     const sql = `
@@ -473,7 +865,7 @@ app.get('/staff/personal-report', checkRole('Staff'), (req, res) => {
         ORDER BY a.status
     `;
 
-    connection.query(sql, [req.session.user.email], (error, rows) => {
+    db.query(sql, [req.session.user.email], (error, rows) => {
         if (error) {
             console.error('Personal report error:', error.message);
             return res.status(500).send('Unable to load personal report');
@@ -508,7 +900,7 @@ function renderStaffList(req, res) {
 
     sql += ' ORDER BY fullName';
 
-    connection.query(sql, values, (error, staff) => {
+    db.query(sql, values, (error, staff) => {
         if (error) {
             console.error('Staff query error:', error.message);
             return res.status(500).send('Unable to load staff records');
@@ -547,7 +939,7 @@ app.post('/admin/staff/create', checkRole('Admin'), (req, res) => {
         LIMIT 1
     `;
 
-    connection.query(checkSql, [email, email], (checkError, rows) => {
+    db.query(checkSql, [email, email], (checkError, rows) => {
         if (checkError) {
             console.error('Staff email check error:', checkError.message);
             return res.status(500).send('Unable to create staff');
@@ -576,26 +968,33 @@ app.post('/admin/staff/create', checkRole('Admin'), (req, res) => {
             VALUES (?, ?, ?, ?, ?)
         `;
 
-        connection.query(sql, [fullName, email, phone || null, position, availabilityStatus], (error) => {
+        db.query(sql, [fullName, email, phone || null, position, availabilityStatus], (error) => {
             if (error) {
                 console.error('Create staff error:', error.message);
                 return res.status(500).send('Unable to create staff');
             }
 
-            const userSql = `
-                INSERT INTO users
-                    (username, email, password, address, contact, role, accountStatus)
-                VALUES
-                    (?, ?, ?, NULL, ?, 'Staff', 'Active')
-            `;
-
-            connection.query(userSql, [fullName, email, password, phone || null], (userError) => {
-                if (userError) {
-                    console.error('Create staff login error:', userError.message);
+            bcrypt.hash(password, 10, (hashError, hashedPassword) => {
+                if (hashError) {
+                    console.error('Staff password hash error:', hashError.message);
                     return res.status(500).send('Staff was created, but the login account could not be created');
                 }
 
-                res.redirect('/admin/staff');
+                const userSql = `
+                    INSERT INTO users
+                        (username, email, password, address, contact, role, accountStatus)
+                    VALUES
+                        (?, ?, ?, 'Not provided', ?, 'Staff', 'Active')
+                `;
+
+                db.query(userSql, [fullName, email, hashedPassword, phone || 'N/A'], (userError) => {
+                    if (userError) {
+                        console.error('Create staff login error:', userError.message);
+                        return res.status(500).send('Staff was created, but the login account could not be created');
+                    }
+
+                    return res.redirect('/admin/staff');
+                });
             });
         });
     });
@@ -604,7 +1003,7 @@ app.post('/admin/staff/create', checkRole('Admin'), (req, res) => {
 app.get('/admin/staff/:staffID', checkRole('Admin'), (req, res) => {
     const sql = 'SELECT * FROM staff WHERE staffID = ? LIMIT 1';
 
-    connection.query(sql, [req.params.staffID], (error, rows) => {
+    db.query(sql, [req.params.staffID], (error, rows) => {
         if (error) {
             console.error('Staff details error:', error.message);
             return res.status(500).send('Unable to load staff');
@@ -625,7 +1024,7 @@ app.get('/admin/staff/:staffID', checkRole('Admin'), (req, res) => {
 app.get('/admin/staff/:staffID/edit', checkRole('Admin'), (req, res) => {
     const sql = 'SELECT * FROM staff WHERE staffID = ? LIMIT 1';
 
-    connection.query(sql, [req.params.staffID], (error, rows) => {
+    db.query(sql, [req.params.staffID], (error, rows) => {
         if (error) {
             console.error('Staff edit query error:', error.message);
             return res.status(500).send('Unable to load staff');
@@ -648,7 +1047,7 @@ app.post('/admin/staff/:staffID/edit', checkRole('Admin'), (req, res) => {
     const { fullName, email, phone, position, availabilityStatus } = req.body;
     const checkSql = 'SELECT staffID FROM staff WHERE email = ? AND staffID != ? LIMIT 1';
 
-    connection.query(checkSql, [email, req.params.staffID], (checkError, rows) => {
+    db.query(checkSql, [email, req.params.staffID], (checkError, rows) => {
         if (checkError) {
             console.error('Staff email check error:', checkError.message);
             return res.status(500).send('Unable to update staff');
@@ -668,7 +1067,7 @@ app.post('/admin/staff/:staffID/edit', checkRole('Admin'), (req, res) => {
 
         const oldStaffSql = 'SELECT email FROM staff WHERE staffID = ? LIMIT 1';
 
-        connection.query(oldStaffSql, [req.params.staffID], (oldError, oldRows) => {
+        db.query(oldStaffSql, [req.params.staffID], (oldError, oldRows) => {
             if (oldError) {
                 console.error('Load staff email error:', oldError.message);
                 return res.status(500).send('Unable to update staff');
@@ -681,7 +1080,7 @@ app.post('/admin/staff/:staffID/edit', checkRole('Admin'), (req, res) => {
                 WHERE staffID = ?
             `;
 
-            connection.query(sql, [fullName, email, phone || null, position, availabilityStatus, req.params.staffID], (error) => {
+            db.query(sql, [fullName, email, phone || null, position, availabilityStatus, req.params.staffID], (error) => {
                 if (error) {
                     console.error('Update staff error:', error.message);
                     return res.status(500).send('Unable to update staff');
@@ -694,7 +1093,7 @@ app.post('/admin/staff/:staffID/edit', checkRole('Admin'), (req, res) => {
                     AND email = ?
                 `;
 
-                connection.query(userSql, [fullName, email, phone || null, oldEmail], () => {
+                db.query(userSql, [fullName, email, phone || null, oldEmail], () => {
                     res.redirect('/admin/staff');
                 });
             });
@@ -705,7 +1104,7 @@ app.post('/admin/staff/:staffID/edit', checkRole('Admin'), (req, res) => {
 app.post('/admin/staff/:staffID/delete', checkRole('Admin'), (req, res) => {
     const oldStaffSql = 'SELECT email FROM staff WHERE staffID = ? LIMIT 1';
 
-    connection.query(oldStaffSql, [req.params.staffID], (oldError, oldRows) => {
+    db.query(oldStaffSql, [req.params.staffID], (oldError, oldRows) => {
         if (oldError) {
             console.error('Load staff email error:', oldError.message);
             return res.status(500).send('Unable to delete staff');
@@ -718,7 +1117,7 @@ app.post('/admin/staff/:staffID/delete', checkRole('Admin'), (req, res) => {
             AND availabilityStatus = 'Unavailable'
         `;
 
-        connection.query(sql, [req.params.staffID], (error, result) => {
+        db.query(sql, [req.params.staffID], (error, result) => {
             if (error) {
                 console.error('Delete staff error:', error.message);
                 return res.status(500).send('Unable to delete staff');
@@ -730,7 +1129,7 @@ app.post('/admin/staff/:staffID/delete', checkRole('Admin'), (req, res) => {
 
             const userSql = "DELETE FROM users WHERE role = 'Staff' AND email = ?";
 
-            connection.query(userSql, [staffEmail], () => {
+            db.query(userSql, [staffEmail], () => {
                 res.redirect('/admin/staff');
             });
         });
@@ -744,27 +1143,45 @@ app.get('/appointments', checkAnyRole(['Staff', 'Admin']), (req, res) => {
             a.userID,
             a.serviceID,
             a.staffID,
-            a.customerName AS customer_name,
-            a.customerEmail AS customer_email,
-            a.customerPhone,
+            u.username AS customer_name,
+            u.email AS customer_email,
+            u.contact AS customerPhone,
             s.serviceName,
             a.appointmentDate,
             a.appointmentTime,
             a.remarks,
-            a.status
+            a.status,
+            q.queueNumber,
+            q.queueStatus
         FROM appointments a
+        INNER JOIN users u ON a.userID = u.id
         LEFT JOIN services s ON a.serviceID = s.serviceID
+        LEFT JOIN \`queue\` q ON a.appointmentID = q.appointmentID
         ORDER BY a.appointmentDate, a.appointmentTime
     `;
 
-    connection.query(sql, (error, appointments) => {
+    db.query(sql, (error, appointments) => {
         if (error) {
             console.error('Appointments query error:', error.message);
             return res.status(500).send('Unable to retrieve appointments');
         }
 
+        const formattedAppointments = appointments.map((appointment) => ({
+            ...appointment,
+            formattedDate: formatDisplayDate(appointment.appointmentDate),
+            formattedTime: formatDisplayTime(appointment.appointmentTime)
+        }));
+        const appointmentSummary = {
+            total: formattedAppointments.length,
+            pending: formattedAppointments.filter((appointment) => appointment.status === 'Pending').length,
+            approved: formattedAppointments.filter((appointment) => appointment.status === 'Approved').length,
+            inQueue: formattedAppointments.filter((appointment) => ['Waiting', 'Serving'].includes(appointment.queueStatus)).length
+        };
+
         res.render('appointments/index', {
-            appointments,
+            appointments: formattedAppointments,
+            appointmentSummary,
+            formatQueueNumber,
             user: req.session.user
         });
     });
@@ -773,7 +1190,7 @@ app.get('/appointments', checkAnyRole(['Staff', 'Admin']), (req, res) => {
 app.get('/appointments/book', (req, res) => {
     const sql = 'SELECT serviceID, serviceName FROM services WHERE status = "Available" ORDER BY serviceName';
 
-    connection.query(sql, (error, services) => {
+    db.query(sql, (error, services) => {
         if (error) {
             console.error('Services query error:', error.message);
             return res.status(500).send('Unable to load booking form');
@@ -802,7 +1219,7 @@ app.post('/appointments/book', (req, res) => {
     if (!customerName || !customerEmail || !serviceID || !appointmentDate || !appointmentTime) {
         const serviceSql = 'SELECT serviceID, serviceName FROM services WHERE status = "Available" ORDER BY serviceName';
 
-        return connection.query(serviceSql, (serviceError, services) => {
+        return db.query(serviceSql, (serviceError, services) => {
             if (serviceError) {
                 console.error('Services query error:', serviceError.message);
                 return res.status(500).send('Unable to load booking form');
@@ -817,20 +1234,137 @@ app.post('/appointments/book', (req, res) => {
         });
     }
 
-    const sql = `
-        INSERT INTO appointments
-            (userID, customerName, customerEmail, customerPhone, serviceID, staffID, appointmentDate, appointmentTime, remarks, status)
-        VALUES
-            (NULL, ?, ?, ?, ?, NULL, ?, ?, ?, 'Pending')
-    `;
+    const logBookingError = (area, error) => {
+        console.error('Appointment booking database error');
+        console.error('Area:', area);
+        console.error('Code:', error.code);
+        console.error('Errno:', error.errno);
+        console.error('SQL State:', error.sqlState);
+        console.error('Message:', error.sqlMessage || error.message);
+    };
 
-    connection.query(sql, [customerName, customerEmail, customerPhone || null, serviceID, appointmentDate, appointmentTime, remarks || null], (error, result) => {
-        if (error) {
-            console.error('Create appointment error:', error.message);
-            return res.status(500).send('Error saving appointment');
+    const createAppointmentWithQueue = (userID) => {
+        db.beginTransaction((transactionError) => {
+            if (transactionError) {
+                logBookingError('transaction start', transactionError);
+                return res.status(500).send('Unable to save appointment. Please try again.');
+            }
+
+            const appointmentSql = `
+                INSERT INTO appointments
+                    (userID, serviceID, staffID, appointmentDate, appointmentTime, remarks, status)
+                VALUES
+                    (?, ?, NULL, ?, ?, ?, 'Pending')
+            `;
+
+            db.query(appointmentSql, [userID, serviceID, appointmentDate, appointmentTime, remarks || null], (appointmentError, appointmentResult) => {
+                if (appointmentError) {
+                    return db.rollback(() => {
+                        logBookingError('appointments insert', appointmentError);
+                        return res.status(500).send('Unable to save appointment. Please try again.');
+                    });
+                }
+
+                const appointmentID = appointmentResult.insertId;
+                const queueSql = `
+                    INSERT INTO \`queue\`
+                        (appointmentID, queueNumber, queueStatus, checkInTime)
+                    VALUES
+                        (?, 0, 'Waiting', NOW())
+                `;
+
+                db.query(queueSql, [appointmentID], (queueError, queueResult) => {
+                    if (queueError) {
+                        return db.rollback(() => {
+                            logBookingError('queue insert', queueError);
+                            return res.status(500).send('Unable to save appointment. Please try again.');
+                        });
+                    }
+
+                    const queueID = queueResult.insertId;
+                    const queueNumber = queueID;
+                    const updateQueueSql = 'UPDATE `queue` SET queueNumber = ? WHERE queueID = ?';
+
+                    db.query(updateQueueSql, [queueNumber, queueID], (updateQueueError) => {
+                        if (updateQueueError) {
+                            return db.rollback(() => {
+                                logBookingError('queue number update', updateQueueError);
+                                return res.status(500).send('Unable to save appointment. Please try again.');
+                            });
+                        }
+
+                        db.commit((commitError) => {
+                            if (commitError) {
+                                return db.rollback(() => {
+                                    logBookingError('transaction commit', commitError);
+                                    return res.status(500).send('Unable to save appointment. Please try again.');
+                                });
+                            }
+
+                            rememberPublicAppointment(req, appointmentID);
+
+                            return res.render('appointments/success', {
+                                title: 'Booking Successful',
+                                appointment: {
+                                    appointmentID,
+                                    appointmentDate,
+                                    appointmentTime,
+                                    status: 'Pending'
+                                },
+                                queue: {
+                                    queueID,
+                                    queueNumber,
+                                    formattedQueueNumber: formatQueueNumber(queueNumber)
+                                },
+                                user: req.session.user || null
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    };
+
+    if (currentUserID(req)) {
+        return createAppointmentWithQueue(currentUserID(req));
+    }
+
+    const userSql = 'SELECT id FROM users WHERE email = ? LIMIT 1';
+    db.query(userSql, [customerEmail], (userError, users) => {
+        if (userError) {
+            logBookingError('customer lookup', userError);
+            return res.status(500).send('Unable to save appointment. Please try again.');
         }
 
-        res.redirect(`/appointments/${result.insertId}`);
+        if (users.length > 0) {
+            return createAppointmentWithQueue(users[0].id);
+        }
+
+        const temporaryPassword = `booking-${Date.now()}-${Math.random()}`;
+        const createUserSql = `
+            INSERT INTO users
+                (username, email, password, address, contact, role, accountStatus)
+            VALUES
+                (?, ?, ?, 'Not provided', ?, 'Customer', 'Active')
+        `;
+        const username = customerName.trim().slice(0, 20);
+        const contact = customerPhone ? customerPhone.trim().slice(0, 10) : 'N/A';
+
+        bcrypt.hash(temporaryPassword, 10, (hashError, hashedPassword) => {
+            if (hashError) {
+                console.error('Customer temporary password hash error:', hashError.message);
+                return res.status(500).send('Unable to save appointment. Please try again.');
+            }
+
+            db.query(createUserSql, [username, customerEmail, hashedPassword, contact], (createUserError, result) => {
+                if (createUserError) {
+                    logBookingError('customer create', createUserError);
+                    return res.status(500).send('Unable to save appointment. Please try again.');
+                }
+
+                return createAppointmentWithQueue(result.insertId);
+            });
+        });
     });
 });
 
@@ -842,27 +1376,31 @@ app.get('/booking-details', (req, res) => {
 });
 
 app.post('/booking-details', (req, res) => {
-    const { appointmentID } = req.body;
+    const { appointmentID, customerEmail } = req.body;
 
-    if (!appointmentID) {
-        req.flash('error', 'Please enter a booking ID.');
+    if (!appointmentID || !customerEmail) {
+        req.flash('error', 'Please enter your booking ID and email address.');
         return res.redirect('/booking-details');
     }
 
-    res.redirect(`/appointments/${appointmentID}`);
+    res.redirect(`/appointments/${appointmentID}?email=${encodeURIComponent(customerEmail.trim().toLowerCase())}`);
 });
 
 app.get('/appointments/:id', (req, res) => {
     const sql = `
-        SELECT a.*, s.serviceName, st.fullName AS staffName
+        SELECT a.*, u.username AS customerName, u.email AS customerEmail,
+               u.contact AS customerPhone, s.serviceName, st.fullName AS staffName,
+               q.queueNumber, q.queueStatus
         FROM appointments a
+        INNER JOIN users u ON a.userID = u.id
         LEFT JOIN services s ON a.serviceID = s.serviceID
         LEFT JOIN staff st ON a.staffID = st.staffID
+        LEFT JOIN \`queue\` q ON a.appointmentID = q.appointmentID
         WHERE a.appointmentID = ?
         LIMIT 1
     `;
 
-    connection.query(sql, [req.params.id], (error, rows) => {
+    db.query(sql, [req.params.id], (error, rows) => {
         if (error) {
             console.error('Booking details query error:', error.message);
             return res.status(500).send('Unable to load booking details');
@@ -870,6 +1408,10 @@ app.get('/appointments/:id', (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).send('Booking not found.');
+        }
+
+        if (!canViewPublicAppointment(req, rows[0])) {
+            return res.status(403).send('Please verify this booking with the email address used to book it.');
         }
 
         res.render('appointments/details', {
@@ -883,7 +1425,7 @@ app.get('/appointments/edit/:id', checkAnyRole(['Staff', 'Admin']), (req, res) =
     const appointmentSql = 'SELECT * FROM appointments WHERE appointmentID = ?';
     const servicesSql = 'SELECT serviceID, serviceName FROM services ORDER BY serviceName';
 
-    connection.query(appointmentSql, [req.params.id], (appointmentError, rows) => {
+    db.query(appointmentSql, [req.params.id], (appointmentError, rows) => {
         if (appointmentError) {
             console.error('Appointment edit query error:', appointmentError.message);
             return res.status(500).send('Unable to load appointment');
@@ -893,7 +1435,7 @@ app.get('/appointments/edit/:id', checkAnyRole(['Staff', 'Admin']), (req, res) =
             return res.status(404).send('Appointment not found');
         }
 
-        connection.query(servicesSql, (servicesError, services) => {
+        db.query(servicesSql, (servicesError, services) => {
             if (servicesError) {
                 console.error('Services query error:', servicesError.message);
                 return res.status(500).send('Unable to load services');
@@ -913,7 +1455,7 @@ app.post('/appointments/edit/:id', checkAnyRole(['Staff', 'Admin']), (req, res) 
     const { serviceID, appointmentDate, appointmentTime, remarks, status } = req.body;
     const selectSql = 'SELECT userID, status FROM appointments WHERE appointmentID = ?';
 
-    connection.query(selectSql, [req.params.id], (selectError, rows) => {
+    db.query(selectSql, [req.params.id], (selectError, rows) => {
         if (selectError) {
             console.error('Appointment owner query error:', selectError.message);
             return res.status(500).send('Error updating appointment');
@@ -931,7 +1473,7 @@ app.post('/appointments/edit/:id', checkAnyRole(['Staff', 'Admin']), (req, res) 
             WHERE appointmentID = ?
         `;
 
-        connection.query(sql, [serviceID, appointmentDate, appointmentTime, remarks || null, nextStatus, req.params.id], (error) => {
+        db.query(sql, [serviceID, appointmentDate, appointmentTime, remarks || null, nextStatus, req.params.id], (error) => {
             if (error) {
                 console.error('Update appointment error:', error.message);
                 return res.status(500).send('Error updating appointment');
@@ -945,7 +1487,7 @@ app.post('/appointments/edit/:id', checkAnyRole(['Staff', 'Admin']), (req, res) 
 app.post('/appointments/delete/:id', checkAnyRole(['Staff', 'Admin']), (req, res) => {
     const selectSql = 'SELECT userID FROM appointments WHERE appointmentID = ?';
 
-    connection.query(selectSql, [req.params.id], (selectError, rows) => {
+    db.query(selectSql, [req.params.id], (selectError, rows) => {
         if (selectError) {
             console.error('Cancel appointment query error:', selectError.message);
             return res.status(500).send('Error cancelling appointment');
@@ -957,7 +1499,7 @@ app.post('/appointments/delete/:id', checkAnyRole(['Staff', 'Admin']), (req, res
 
         const sql = "UPDATE appointments SET status = 'Cancelled' WHERE appointmentID = ?";
 
-        connection.query(sql, [req.params.id], (error) => {
+        db.query(sql, [req.params.id], (error) => {
             if (error) {
                 console.error('Cancel appointment error:', error.message);
                 return res.status(500).send('Error cancelling appointment');
@@ -971,7 +1513,7 @@ app.post('/appointments/delete/:id', checkAnyRole(['Staff', 'Admin']), (req, res
 app.post('/appointments/:id/approve', checkAnyRole(['Admin', 'Staff']), (req, res) => {
     const sql = "UPDATE appointments SET status = 'Approved' WHERE appointmentID = ?";
 
-    connection.query(sql, [req.params.id], (error) => {
+    db.query(sql, [req.params.id], (error) => {
         if (error) {
             console.error('Approve appointment error:', error.message);
             return res.status(500).send('Error approving appointment');
@@ -995,7 +1537,7 @@ app.post('/queue/check-in/:appointmentID', (req, res) => {
         LIMIT 1
     `;
 
-    connection.query(appointmentSql, [req.params.appointmentID], (appointmentError, appointmentRows) => {
+    db.query(appointmentSql, [req.params.appointmentID], (appointmentError, appointmentRows) => {
         if (appointmentError) {
             console.error('Queue appointment query error:', appointmentError.message);
             return res.status(500).send('Unable to check in');
@@ -1013,7 +1555,7 @@ app.post('/queue/check-in/:appointmentID', (req, res) => {
 
         const existingSql = 'SELECT * FROM `queue` WHERE appointmentID = ? LIMIT 1';
 
-        connection.query(existingSql, [req.params.appointmentID], (existingError, existingRows) => {
+        db.query(existingSql, [req.params.appointmentID], (existingError, existingRows) => {
             if (existingError) {
                 console.error('Existing queue query error:', existingError.message);
                 return res.status(500).send('Unable to check in');
@@ -1025,7 +1567,7 @@ app.post('/queue/check-in/:appointmentID', (req, res) => {
 
             const nextSql = 'SELECT COALESCE(MAX(queueNumber), 0) + 1 AS nextQueueNumber FROM `queue`';
 
-            connection.query(nextSql, (nextError, nextRows) => {
+            db.query(nextSql, (nextError, nextRows) => {
                 if (nextError) {
                     console.error('Queue number query error:', nextError.message);
                     return res.status(500).send('Unable to check in');
@@ -1038,7 +1580,7 @@ app.post('/queue/check-in/:appointmentID', (req, res) => {
                         (?, ?, 'Waiting', NOW())
                 `;
 
-                connection.query(insertSql, [req.params.appointmentID, nextRows[0].nextQueueNumber], (insertError) => {
+                db.query(insertSql, [req.params.appointmentID, nextRows[0].nextQueueNumber], (insertError) => {
                     if (insertError) {
                         console.error('Queue insert error:', insertError.message);
                         return res.status(500).send('Unable to check in');
@@ -1059,29 +1601,32 @@ app.get('/queue/status', (req, res) => {
 });
 
 app.post('/queue/status', (req, res) => {
-    const { appointmentID } = req.body;
+    const { appointmentID, customerEmail } = req.body;
 
-    if (!appointmentID) {
-        req.flash('error', 'Please enter a booking ID.');
+    if (!appointmentID || !customerEmail) {
+        req.flash('error', 'Please enter your booking ID and email address.');
         return res.redirect('/queue/status');
     }
 
-    res.redirect(`/queue/status/${appointmentID}`);
+    res.redirect(`/queue/status/${appointmentID}?email=${encodeURIComponent(customerEmail.trim().toLowerCase())}`);
 });
 
 app.get('/queue/status/:appointmentID', (req, res) => {
     const sql = `
         SELECT q.*, a.userID, a.appointmentDate, a.appointmentTime,
-               a.status AS appointmentStatus, s.serviceName, st.fullName AS staffName
+               a.appointmentID, a.status AS appointmentStatus, u.username AS customerName,
+               u.email AS customerEmail,
+               s.serviceName, st.fullName AS staffName
         FROM \`queue\` q
         INNER JOIN appointments a ON q.appointmentID = a.appointmentID
+        INNER JOIN users u ON a.userID = u.id
         LEFT JOIN services s ON a.serviceID = s.serviceID
         LEFT JOIN staff st ON a.staffID = st.staffID
         WHERE q.appointmentID = ?
         LIMIT 1
     `;
 
-    connection.query(sql, [req.params.appointmentID], (error, rows) => {
+    db.query(sql, [req.params.appointmentID], (error, rows) => {
         if (error) {
             console.error('Queue status error:', error.message);
             return res.status(500).send('Unable to load queue status');
@@ -1098,14 +1643,18 @@ app.get('/queue/status/:appointmentID', (req, res) => {
             });
         }
 
+        if (!canViewPublicAppointment(req, rows[0])) {
+            return res.status(403).send('Please verify this queue status with the email address used to book it.');
+        }
+
         const countSql = `
             SELECT COUNT(*) AS customersAhead
             FROM \`queue\`
-            WHERE queueStatus = 'Waiting'
+            WHERE queueStatus IN ('Waiting', 'Serving')
             AND queueNumber < ?
         `;
 
-        connection.query(countSql, [rows[0].queueNumber], (countError, countRows) => {
+        db.query(countSql, [rows[0].queueNumber], (countError, countRows) => {
             if (countError) {
                 console.error('Queue count error:', countError.message);
                 return res.status(500).send('Unable to load queue status');
@@ -1127,9 +1676,10 @@ app.get('/queue/admin', checkAnyRole(['Admin', 'Staff']), (req, res) => {
     const sql = `
         SELECT q.*, a.userID, a.serviceID, a.staffID, a.appointmentDate,
                a.appointmentTime, a.status AS appointmentStatus,
-               s.serviceName, st.fullName AS staffName
+               u.username AS customerName, s.serviceName, st.fullName AS staffName
         FROM \`queue\` q
         INNER JOIN appointments a ON q.appointmentID = a.appointmentID
+        INNER JOIN users u ON a.userID = u.id
         LEFT JOIN services s ON a.serviceID = s.serviceID
         LEFT JOIN staff st ON a.staffID = st.staffID
         WHERE q.queueStatus IN ('Waiting', 'Serving')
@@ -1142,7 +1692,7 @@ app.get('/queue/admin', checkAnyRole(['Admin', 'Staff']), (req, res) => {
             q.queueNumber
     `;
 
-    connection.query(sql, (error, queueEntries) => {
+    db.query(sql, (error, queueEntries) => {
         if (error) {
             console.error('Admin queue error:', error.message);
             return res.status(500).send('Unable to load queue');
@@ -1170,7 +1720,7 @@ app.post('/queue/admin/:queueID/serving', checkAnyRole(['Admin', 'Staff']), (req
         AND queueStatus = 'Waiting'
     `;
 
-    connection.query(sql, [req.params.queueID], (error) => {
+    db.query(sql, [req.params.queueID], (error) => {
         if (error) {
             console.error('Serving queue error:', error.message);
             return res.status(500).send('Unable to update queue');
@@ -1188,7 +1738,7 @@ app.post('/queue/admin/:queueID/completed', checkAnyRole(['Admin', 'Staff']), (r
         AND queueStatus = 'Serving'
     `;
 
-    connection.query(sql, [req.params.queueID], (error) => {
+    db.query(sql, [req.params.queueID], (error) => {
         if (error) {
             console.error('Complete queue error:', error.message);
             return res.status(500).send('Unable to update queue');
@@ -1207,7 +1757,7 @@ app.post('/queue/admin/:queueID/cancel', checkAnyRole(['Admin', 'Staff']), (req,
         AND queueStatus IN ('Waiting', 'Serving')
     `;
 
-    connection.query(sql, [req.params.queueID], (error) => {
+    db.query(sql, [req.params.queueID], (error) => {
         if (error) {
             console.error('Cancel queue error:', error.message);
             return res.status(500).send('Unable to update queue');
@@ -1220,15 +1770,16 @@ app.post('/queue/admin/:queueID/cancel', checkAnyRole(['Admin', 'Staff']), (req,
 app.get('/feedback', checkRole('Admin'), (req, res) => {
     const sql = `
         SELECT f.feedbackID, f.appointmentID, f.userID, f.rating, f.comments,
-               f.submittedDate, a.customerName, s.serviceName,
+               f.submittedDate, u.username AS customerName, s.serviceName,
                a.appointmentDate, a.appointmentTime
         FROM feedback f
         INNER JOIN appointments a ON f.appointmentID = a.appointmentID
+        INNER JOIN users u ON a.userID = u.id
         INNER JOIN services s ON a.serviceID = s.serviceID
         ORDER BY f.submittedDate DESC
     `;
 
-    connection.query(sql, (error, feedback) => {
+    db.query(sql, (error, feedback) => {
         if (error) {
             console.error('Feedback query error:', error.message);
             return res.status(500).send('Unable to retrieve feedback');
@@ -1252,7 +1803,7 @@ app.get('/feedback/add/:appointmentID', (req, res) => {
         LIMIT 1
     `;
 
-    connection.query(sql, [req.params.appointmentID], (error, rows) => {
+    db.query(sql, [req.params.appointmentID], (error, rows) => {
         if (error) {
             console.error('Feedback appointment query error:', error.message);
             return res.status(500).send('Unable to load feedback page');
@@ -1285,7 +1836,7 @@ app.post('/feedback/add/:appointmentID', (req, res) => {
         VALUES (?, NULL, ?, ?, NOW())
     `;
 
-    connection.query(sql, [req.params.appointmentID, rating, comments || null], (error) => {
+    db.query(sql, [req.params.appointmentID, rating, comments || null], (error) => {
         if (error) {
             console.error('Create feedback error:', error.message);
             return res.status(500).send('Unable to submit feedback');
@@ -1297,16 +1848,17 @@ app.post('/feedback/add/:appointmentID', (req, res) => {
 
 app.get('/feedback/edit/:feedbackID', checkRole('Admin'), (req, res) => {
     const sql = `
-        SELECT f.*, a.customerName, s.serviceName,
+        SELECT f.*, u.username AS customerName, s.serviceName,
                a.appointmentDate, a.appointmentTime
         FROM feedback f
         INNER JOIN appointments a ON f.appointmentID = a.appointmentID
+        INNER JOIN users u ON a.userID = u.id
         INNER JOIN services s ON a.serviceID = s.serviceID
         WHERE f.feedbackID = ?
         LIMIT 1
     `;
 
-    connection.query(sql, [req.params.feedbackID], (error, rows) => {
+    db.query(sql, [req.params.feedbackID], (error, rows) => {
         if (error) {
             console.error('Feedback edit query error:', error.message);
             return res.status(500).send('Unable to load feedback');
@@ -1333,7 +1885,7 @@ app.post('/feedback/edit/:feedbackID', checkRole('Admin'), (req, res) => {
     `;
     const values = [rating, comments || null, req.params.feedbackID];
 
-    connection.query(sql, values, (error) => {
+    db.query(sql, values, (error) => {
         if (error) {
             console.error('Update feedback error:', error.message);
             return res.status(500).send('Unable to update feedback');
@@ -1350,7 +1902,7 @@ app.post('/feedback/delete/:feedbackID', checkRole('Admin'), (req, res) => {
     `;
     const values = [req.params.feedbackID];
 
-    connection.query(sql, values, (error) => {
+    db.query(sql, values, (error) => {
         if (error) {
             console.error('Delete feedback error:', error.message);
             return res.status(500).send('Unable to delete feedback');
@@ -1362,16 +1914,17 @@ app.post('/feedback/delete/:feedbackID', checkRole('Admin'), (req, res) => {
 
 app.get('/feedback/:feedbackID', checkRole('Admin'), (req, res) => {
     const sql = `
-        SELECT f.*, a.customerName, s.serviceName,
+        SELECT f.*, u.username AS customerName, s.serviceName,
                a.appointmentDate, a.appointmentTime
         FROM feedback f
         INNER JOIN appointments a ON f.appointmentID = a.appointmentID
+        INNER JOIN users u ON a.userID = u.id
         INNER JOIN services s ON a.serviceID = s.serviceID
         WHERE f.feedbackID = ?
         LIMIT 1
     `;
 
-    connection.query(sql, [req.params.feedbackID], (error, rows) => {
+    db.query(sql, [req.params.feedbackID], (error, rows) => {
         if (error) {
             console.error('Feedback details query error:', error.message);
             return res.status(500).send('Unable to load feedback');
@@ -1403,7 +1956,7 @@ app.get('/service-management', checkRole('Admin'), (req, res) => {
         ORDER BY serviceName ASC
     `;
 
-    connection.query(sql, (error, services) => {
+    db.query(sql, (error, services) => {
         if (error) {
             console.error('Services query error:', error.message);
             return res.status(500).send('Unable to retrieve services');
@@ -1438,7 +1991,7 @@ app.post('/service-management/add', checkRole('Admin'), (req, res) => {
         VALUES (?, ?, ?, ?, ?)
     `;
 
-    connection.query(sql, [serviceName, description || null, duration, price, status], (error) => {
+    db.query(sql, [serviceName, description || null, duration, price, status], (error) => {
         if (error) {
             console.error('Create service error:', error.message);
             return res.status(500).render('addService', {
@@ -1455,7 +2008,7 @@ app.post('/service-management/add', checkRole('Admin'), (req, res) => {
 app.get('/service-management/:serviceID/edit', checkRole('Admin'), (req, res) => {
     const sql = 'SELECT * FROM services WHERE serviceID = ?';
 
-    connection.query(sql, [req.params.serviceID], (error, rows) => {
+    db.query(sql, [req.params.serviceID], (error, rows) => {
         if (error) {
             console.error('Service edit query error:', error.message);
             return res.status(500).send('Unable to retrieve the service');
@@ -1481,7 +2034,7 @@ app.post('/service-management/:serviceID/edit', checkRole('Admin'), (req, res) =
         WHERE serviceID = ?
     `;
 
-    connection.query(sql, [serviceName, description || null, duration, price, status, req.params.serviceID], (error) => {
+    db.query(sql, [serviceName, description || null, duration, price, status, req.params.serviceID], (error) => {
         if (error) {
             console.error('Update service error:', error.message);
             return res.status(500).send('Unable to update the service');
@@ -1494,7 +2047,7 @@ app.post('/service-management/:serviceID/edit', checkRole('Admin'), (req, res) =
 app.post('/service-management/:serviceID/delete', checkRole('Admin'), (req, res) => {
     const sql = 'DELETE FROM services WHERE serviceID = ?';
 
-    connection.query(sql, [req.params.serviceID], (error) => {
+    db.query(sql, [req.params.serviceID], (error) => {
         if (error) {
             console.error('Delete service error:', error.message);
             return res.status(500).send('Unable to delete the service');
@@ -1507,7 +2060,7 @@ app.post('/service-management/:serviceID/delete', checkRole('Admin'), (req, res)
 app.get('/service-management/:serviceID', checkRole('Admin'), (req, res) => {
     const sql = 'SELECT * FROM services WHERE serviceID = ?';
 
-    connection.query(sql, [req.params.serviceID], (error, rows) => {
+    db.query(sql, [req.params.serviceID], (error, rows) => {
         if (error) {
             console.error('Service details query error:', error.message);
             return res.status(500).send('Unable to retrieve the service');
@@ -1548,25 +2101,25 @@ app.get('/reports/operational', checkRole('Admin'), (req, res) => {
         ORDER BY reportMonth DESC
     `;
 
-    connection.query(statusSql, (statusError, appointmentsByStatus) => {
+    db.query(statusSql, (statusError, appointmentsByStatus) => {
         if (statusError) {
             console.error('Report status error:', statusError.message);
             return res.status(500).send('Unable to generate report');
         }
 
-        connection.query(serviceSql, (serviceError, appointmentsByService) => {
+        db.query(serviceSql, (serviceError, appointmentsByService) => {
             if (serviceError) {
                 console.error('Report service error:', serviceError.message);
                 return res.status(500).send('Unable to generate report');
             }
 
-            connection.query(feedbackSql, (feedbackError, feedbackRows) => {
+            db.query(feedbackSql, (feedbackError, feedbackRows) => {
                 if (feedbackError) {
                     console.error('Report feedback error:', feedbackError.message);
                     return res.status(500).send('Unable to generate report');
                 }
 
-                connection.query(monthlySql, (monthlyError, monthlyAppointments) => {
+                db.query(monthlySql, (monthlyError, monthlyAppointments) => {
                     if (monthlyError) {
                         console.error('Report monthly error:', monthlyError.message);
                         return res.status(500).send('Unable to generate report');

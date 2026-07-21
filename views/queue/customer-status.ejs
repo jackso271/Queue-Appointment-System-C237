@@ -8,6 +8,7 @@
     <link href="/css/style.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+<%- include('../partials/navbar') %>
     <%
         const status = queueEntry ? queueEntry.queueStatus : null;
         const statusMessages = {
@@ -126,7 +127,7 @@
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="queue-detail-box">
-                                        <span class="text-muted small">Customers Ahead</span>
+                                        <span class="text-muted small">Patients Ahead</span>
                                         <strong><%= customersAhead || 0 %></strong>
                                     </div>
                                 </div>
