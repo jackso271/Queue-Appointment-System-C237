@@ -24,6 +24,13 @@
 <%- include('../partials/navbar') %>
 
 <main class="container py-4 py-lg-5">
+    <% if (success) { %>
+        <div class="alert alert-success"><%= success %></div>
+    <% } %>
+
+    <% if (error) { %>
+        <div class="alert alert-danger"><%= error %></div>
+    <% } %>
 
     <section class="bg-white border rounded-3 shadow-sm p-4 mb-4">
 
@@ -141,7 +148,7 @@
 
                         <tr>
                             <th class="px-4 py-3">Customer</th>
-                            <th class="py-3">Service</th>
+                            <th class="py-3">Appointment</th>
                             <th class="py-3">Rating</th>
                             <th class="py-3">Comments</th>
                             <th class="py-3">Submitted</th>
@@ -158,16 +165,33 @@
 
                                 <td class="px-4 py-3 fw-semibold">
                                     <%= item.customerName || 'Unknown customer' %>
+                                    <div class="text-muted small fw-normal">
+                                        <%= item.customerEmail || 'No email' %>
+                                    </div>
                                 </td>
 
                                 <td>
-                                    <%= item.serviceName || 'Unknown service' %>
+                                    <div class="fw-semibold">
+                                        #<%= item.appointmentID %>
+                                        <% if (item.queueNumber) { %>
+                                            <span class="text-muted">
+                                                Q<%= String(item.queueNumber).padStart(3, '0') %>
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <%= item.serviceName || 'Unknown service' %>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <%= item.appointmentDate %> <%= item.appointmentTime %>
+                                    </div>
                                 </td>
 
                                 <td>
 
                                     <span class="badge text-bg-warning">
-                                        <%= item.rating %> / 5
+                                        <%- '&#9733;'.repeat(Number(item.rating || 0)) %>
+                                        <span class="visually-hidden"><%= item.rating %> / 5</span>
                                     </span>
 
                                 </td>

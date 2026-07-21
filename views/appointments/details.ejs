@@ -10,7 +10,21 @@
 <body class="bg-light">
 <%- include('../partials/navbar', { user }) %>
 
+<%
+    const queryEmail = typeof customerEmail !== 'undefined' && customerEmail
+        ? `?email=${encodeURIComponent(customerEmail)}`
+        : '';
+%>
+
 <main class="container py-4">
+    <% if (success) { %>
+        <div class="alert alert-success"><%= success %></div>
+    <% } %>
+
+    <% if (error) { %>
+        <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+
     <div class="bg-white border rounded p-4">
         <h1 class="h3">Booking Details</h1>
         <p class="text-muted">Booking ID: <strong><%= appointment.appointmentID %></strong></p>
@@ -54,8 +68,8 @@
         </dl>
 
         <div class="d-flex flex-wrap gap-2">
-            <a href="/queue/status/<%= appointment.appointmentID %>" class="btn btn-primary">Queue Status</a>
-            <a href="/feedback/add/<%= appointment.appointmentID %>" class="btn btn-outline-primary">Submit Feedback</a>
+            <a href="/queue/status/<%= appointment.appointmentID %><%= queryEmail %>" class="btn btn-primary">Queue Status</a>
+            <a href="/feedback/add/<%= appointment.appointmentID %><%= queryEmail %>" class="btn btn-outline-primary">Submit Feedback</a>
             <a href="/appointments/book" class="btn btn-outline-secondary">Book Another</a>
         </div>
     </div>

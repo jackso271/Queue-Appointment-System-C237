@@ -1,65 +1,107 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Leave Feedback</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Your Feedback | QueueEase</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
+<body class="bg-light">
+<%- include('../partials/navbar', { user }) %>
 
-<body>
+<%
+    const queryEmail = customerEmail ? `?email=${encodeURIComponent(customerEmail)}` : '';
+    const selectedRating = formData && formData.rating ? Number(formData.rating) : null;
+    const commentsValue = formData && formData.comments ? formData.comments : '';
+%>
 
-<%- include('../partials/navbar') %>
+<main class="container py-4 py-lg-5">
+    <section class="bg-white border rounded-3 shadow-sm p-4 p-lg-5">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <p class="text-uppercase text-primary fw-semibold small mb-2">QueueEase</p>
+                <h1 class="h2 mb-3">Share Your Feedback</h1>
+                <p class="text-muted mb-4">
+                    Your feedback is linked to booking
+                    <strong>#<%= appointment.appointmentID %></strong>.
+                </p>
 
-<div class="container mt-5">
+                <dl class="row mb-0">
+                    <dt class="col-5">Service</dt>
+                    <dd class="col-7"><%= appointment.serviceName || 'Unknown service' %></dd>
 
-    <h2>Leave Feedback</h2>
+                    <dt class="col-5">Date</dt>
+                    <dd class="col-7"><%= appointment.appointmentDate %></dd>
 
-    <p><strong>Service:</strong> <%= appointment.serviceName %></p>
-    <p><strong>Date:</strong> <%= appointment.appointmentDate %></p>
-    <p><strong>Time:</strong> <%= appointment.appointmentTime %></p>
+                    <dt class="col-5">Time</dt>
+                    <dd class="col-7"><%= appointment.appointmentTime %></dd>
 
-    <% if (error) { %>
-        <div class="alert alert-danger">
-            <%= error %>
+                    <dt class="col-5">Queue Number</dt>
+                    <dd class="col-7">
+                        <% if (appointment.queueNumber) { %>
+                            Q<%= String(appointment.queueNumber).padStart(3, '0') %>
+                        <% } else { %>
+                            Not assigned
+                        <% } %>
+                    </dd>
+
+                    <dt class="col-5">Queue Status</dt>
+                    <dd class="col-7"><%= appointment.queueStatus || 'Not assigned' %></dd>
+                </dl>
+            </div>
+
+            <div class="col-lg-7">
+                <% if (error) { %>
+                    <div class="alert alert-danger"><%= error %></div>
+                <% } %>
+
+                <form action="/feedback/add/<%= appointment.appointmentID %><%= queryEmail %>" method="POST">
+                    <% if (customerEmail) { %>
+                        <input type="hidden" name="customerEmail" value="<%= customerEmail %>">
+                    <% } %>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="rating">Rating</label>
+                        <select id="rating" name="rating" class="form-select" required>
+                            <option value="">Select Rating</option>
+                            <% [
+                                { value: 5, label: '5 - Excellent' },
+                                { value: 4, label: '4 - Good' },
+                                { value: 3, label: '3 - Average' },
+                                { value: 2, label: '2 - Poor' },
+                                { value: 1, label: '1 - Very Poor' }
+                            ].forEach(option => { %>
+                                <option value="<%= option.value %>" <%= selectedRating === option.value ? 'selected' : '' %>>
+                                    <%= option.label %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="comments">Comments</label>
+                        <textarea
+                            id="comments"
+                            class="form-control"
+                            name="comments"
+                            rows="6"
+                            maxlength="500"
+                            required
+                        ><%= commentsValue %></textarea>
+                        <div class="form-text">Maximum 500 characters.</div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-primary" type="submit">Submit Feedback</button>
+                        <a href="/appointments/<%= appointment.appointmentID %><%= queryEmail %>" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
         </div>
-    <% } %>
+    </section>
+</main>
 
-    <form action="/feedback/add/<%= appointment.appointmentID %>" method="POST">
-
-        <div class="mb-3">
-            <label class="form-label">Rating</label>
-
-            <select name="rating" class="form-select" required>
-
-                <option value="">Select Rating</option>
-
-                <option value="5">5 - Excellent</option>
-                <option value="4">4 - Good</option>
-                <option value="3">3 - Average</option>
-                <option value="2">2 - Poor</option>
-                <option value="1">1 - Very Poor</option>
-
-            </select>
-
-        </div>
-
-        <div class="mb-3">
-
-            <label class="form-label">Comments</label>
-
-            <textarea
-                class="form-control"
-                name="comments"
-                rows="5"></textarea>
-
-        </div>
-
-        <button class="btn btn-primary">
-            Submit Feedback
-        </button>
-
-    </form>
-
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1414,8 +1414,11 @@ app.get('/appointments/:id', (req, res) => {
             return res.status(403).send('Please verify this booking with the email address used to book it.');
         }
 
+        rememberPublicAppointment(req, rows[0].appointmentID);
+
         res.render('appointments/details', {
             appointment: rows[0],
+            customerEmail: req.query.email || '',
             user: req.session.user || null
         });
     });
@@ -1767,100 +1770,294 @@ app.post('/queue/admin/:queueID/cancel', checkAnyRole(['Admin', 'Staff']), (req,
     });
 });
 
+const FEEDBACK_COMMENT_MAX_LENGTH = 500;
+
+function getFeedbackEmail(req) {
+    return (req.query.email || req.body.customerEmail || '').trim().toLowerCase();
+}
+
+function feedbackAccessQuery(req) {
+    const email = getFeedbackEmail(req);
+    return email ? `?email=${encodeURIComponent(email)}` : '';
+}
+
+function canAccessCustomerFeedback(req, row) {
+    if (!row) {
+        return false;
+    }
+
+    if (req.session.user && normalizeRole(req.session.user.role) === 'Customer') {
+        return Number(currentUserID(req)) === Number(row.appointmentUserID);
+    }
+
+    if (req.session.user) {
+        return false;
+    }
+
+    const knownAppointments = req.session.publicAppointments || [];
+    if (knownAppointments.includes(Number(row.appointmentID))) {
+        return true;
+    }
+
+    const email = getFeedbackEmail(req);
+    return Boolean(email && email === String(row.customerEmail || '').toLowerCase());
+}
+
+function isFeedbackEligible(row) {
+    if (!row) {
+        return false;
+    }
+
+    const appointmentStatus = String(row.appointmentStatus || '');
+    const queueStatus = String(row.queueStatus || '');
+
+    if (['Pending', 'Rejected', 'Cancelled'].includes(appointmentStatus)) {
+        return false;
+    }
+
+    if (queueStatus === 'Cancelled') {
+        return false;
+    }
+
+    return appointmentStatus === 'Completed'
+        || (appointmentStatus === 'Approved' && queueStatus === 'Completed');
+}
+
+function validateFeedbackInput(ratingValue, commentsValue) {
+    const rating = Number(ratingValue);
+    const comments = String(commentsValue || '').trim();
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return {
+            error: 'Please choose a rating between 1 and 5.',
+            rating,
+            comments
+        };
+    }
+
+    if (!comments) {
+        return {
+            error: 'Please enter your comments.',
+            rating,
+            comments
+        };
+    }
+
+    if (comments.length > FEEDBACK_COMMENT_MAX_LENGTH) {
+        return {
+            error: `Comments must be ${FEEDBACK_COMMENT_MAX_LENGTH} characters or fewer.`,
+            rating,
+            comments
+        };
+    }
+
+    return {
+        error: null,
+        rating,
+        comments
+    };
+}
+
+function renderFeedbackForm(req, res, statusCode, appointment, error, formData = {}) {
+    return res.status(statusCode).render('feedback/addFeedback', {
+        appointment,
+        error,
+        formData,
+        customerEmail: getFeedbackEmail(req),
+        user: req.session.user || null
+    });
+}
+
+const feedbackAppointmentSql = `
+    SELECT a.appointmentID, a.userID AS appointmentUserID,
+           a.status AS appointmentStatus, a.appointmentDate,
+           a.appointmentTime, u.username AS customerName,
+           u.email AS customerEmail, s.serviceName, q.queueNumber,
+           q.queueStatus, f.feedbackID
+    FROM appointments a
+    INNER JOIN users u ON a.userID = u.id
+    INNER JOIN services s ON a.serviceID = s.serviceID
+    LEFT JOIN \`queue\` q ON a.appointmentID = q.appointmentID
+    LEFT JOIN feedback f ON a.appointmentID = f.appointmentID
+    WHERE a.appointmentID = ?
+    LIMIT 1
+`;
+
+const feedbackDetailsSql = `
+    SELECT f.feedbackID, f.appointmentID, f.userID, f.rating, f.comments,
+           f.submittedDate, a.userID AS appointmentUserID,
+           a.status AS appointmentStatus, a.appointmentDate,
+           a.appointmentTime, u.username AS customerName,
+           u.email AS customerEmail, s.serviceName, q.queueNumber,
+           q.queueStatus
+    FROM feedback f
+    INNER JOIN appointments a ON f.appointmentID = a.appointmentID
+    INNER JOIN users u ON a.userID = u.id
+    INNER JOIN services s ON a.serviceID = s.serviceID
+    LEFT JOIN \`queue\` q ON a.appointmentID = q.appointmentID
+    WHERE f.feedbackID = ?
+    LIMIT 1
+`;
+
 app.get('/feedback', checkRole('Admin'), (req, res) => {
     const sql = `
         SELECT f.feedbackID, f.appointmentID, f.userID, f.rating, f.comments,
-               f.submittedDate, u.username AS customerName, s.serviceName,
-               a.appointmentDate, a.appointmentTime
+               f.submittedDate, u.username AS customerName,
+               u.email AS customerEmail, s.serviceName,
+               a.appointmentDate, a.appointmentTime, q.queueNumber,
+               q.queueStatus
         FROM feedback f
         INNER JOIN appointments a ON f.appointmentID = a.appointmentID
         INNER JOIN users u ON a.userID = u.id
         INNER JOIN services s ON a.serviceID = s.serviceID
+        LEFT JOIN \`queue\` q ON a.appointmentID = q.appointmentID
         ORDER BY f.submittedDate DESC
     `;
 
     db.query(sql, (error, feedback) => {
         if (error) {
-            console.error('Feedback query error:', error.message);
+            logDatabaseError('Feedback list', error);
             return res.status(500).send('Unable to retrieve feedback');
         }
 
         res.render('feedback/feedbackList', {
             feedback,
+            success: res.locals.success,
+            error: res.locals.error,
             user: req.session.user
         });
     });
 });
 
 app.get('/feedback/add/:appointmentID', (req, res) => {
-    const sql = `
-        SELECT a.appointmentID, a.userID, a.status, a.appointmentDate,
-               a.appointmentTime, s.serviceName, f.feedbackID
-        FROM appointments a
-        INNER JOIN services s ON a.serviceID = s.serviceID
-        LEFT JOIN feedback f ON a.appointmentID = f.appointmentID
-        WHERE a.appointmentID = ?
-        LIMIT 1
-    `;
-
-    db.query(sql, [req.params.appointmentID], (error, rows) => {
+    db.query(feedbackAppointmentSql, [req.params.appointmentID], (error, rows) => {
         if (error) {
-            console.error('Feedback appointment query error:', error.message);
+            logDatabaseError('Feedback appointment lookup', error);
             return res.status(500).send('Unable to load feedback page');
         }
 
         if (rows.length === 0) {
-            return res.status(404).send('Appointment not found.');
+            req.flash('error', 'Appointment not found.');
+            return res.redirect('/booking-details');
         }
 
-        if (rows[0].status !== 'Completed') {
-            return res.status(400).send('Appointment is not completed.');
+        const appointment = rows[0];
+
+        if (!canAccessCustomerFeedback(req, appointment)) {
+            req.flash('error', 'You are not authorised to submit feedback for this appointment.');
+            return res.redirect('/booking-details');
         }
 
-        if (rows[0].feedbackID) {
-            return res.status(400).send('Feedback already submitted.');
+        rememberPublicAppointment(req, appointment.appointmentID);
+
+        if (!isFeedbackEligible(appointment)) {
+            return renderFeedbackForm(
+                req,
+                res,
+                400,
+                appointment,
+                'This appointment is not eligible for feedback yet. Feedback can be submitted after the appointment is completed.'
+            );
         }
 
-        res.render('feedback/addFeedback', {
-            appointment: rows[0],
-            error: null,
-            user: req.session.user || null
-        });
+        if (appointment.feedbackID) {
+            req.flash('error', 'Feedback already submitted.');
+            return res.redirect(`/feedback/${appointment.feedbackID}${feedbackAccessQuery(req)}`);
+        }
+
+        return renderFeedbackForm(req, res, 200, appointment, null);
     });
 });
 
 app.post('/feedback/add/:appointmentID', (req, res) => {
-    const { rating, comments } = req.body;
-    const sql = `
-        INSERT INTO feedback (appointmentID, userID, rating, comments, submittedDate)
-        VALUES (?, NULL, ?, ?, NOW())
-    `;
-
-    db.query(sql, [req.params.appointmentID, rating, comments || null], (error) => {
-        if (error) {
-            console.error('Create feedback error:', error.message);
+    db.query(feedbackAppointmentSql, [req.params.appointmentID], (lookupError, rows) => {
+        if (lookupError) {
+            logDatabaseError('Feedback appointment lookup', lookupError);
             return res.status(500).send('Unable to submit feedback');
         }
 
-        res.redirect(`/appointments/${req.params.appointmentID}`);
+        if (rows.length === 0) {
+            req.flash('error', 'Appointment not found.');
+            return res.redirect('/booking-details');
+        }
+
+        const appointment = rows[0];
+
+        if (!canAccessCustomerFeedback(req, appointment)) {
+            req.flash('error', 'You are not authorised to submit feedback for this appointment.');
+            return res.redirect('/booking-details');
+        }
+
+        rememberPublicAppointment(req, appointment.appointmentID);
+
+        if (!isFeedbackEligible(appointment)) {
+            return renderFeedbackForm(
+                req,
+                res,
+                400,
+                appointment,
+                'This appointment is not eligible for feedback yet. Feedback can be submitted after the appointment is completed.',
+                req.body
+            );
+        }
+
+        if (appointment.feedbackID) {
+            req.flash('error', 'Feedback already submitted.');
+            return res.redirect(`/feedback/${appointment.feedbackID}${feedbackAccessQuery(req)}`);
+        }
+
+        const validation = validateFeedbackInput(req.body.rating, req.body.comments);
+
+        if (validation.error) {
+            return renderFeedbackForm(req, res, 400, appointment, validation.error, req.body);
+        }
+
+        const duplicateSql = 'SELECT feedbackID FROM feedback WHERE appointmentID = ? LIMIT 1';
+
+        db.query(duplicateSql, [appointment.appointmentID], (duplicateError, duplicateRows) => {
+            if (duplicateError) {
+                logDatabaseError('Feedback duplicate check', duplicateError);
+                return res.status(500).send('Unable to submit feedback');
+            }
+
+            if (duplicateRows.length > 0) {
+                req.flash('error', 'Feedback already submitted.');
+                return res.redirect(`/feedback/${duplicateRows[0].feedbackID}${feedbackAccessQuery(req)}`);
+            }
+
+            const insertSql = `
+                INSERT INTO feedback (appointmentID, userID, rating, comments, submittedDate)
+                VALUES (?, ?, ?, ?, NOW())
+            `;
+
+            db.query(
+                insertSql,
+                [appointment.appointmentID, appointment.appointmentUserID, validation.rating, validation.comments],
+                (insertError, result) => {
+                    if (insertError) {
+                        logDatabaseError('Feedback create', insertError);
+                        return renderFeedbackForm(
+                            req,
+                            res,
+                            500,
+                            appointment,
+                            'Unable to save feedback.',
+                            req.body
+                        );
+                    }
+
+                    req.flash('success', 'Thank you for your feedback.');
+                    return res.redirect(`/feedback/${result.insertId}${feedbackAccessQuery(req)}`);
+                }
+            );
+        });
     });
 });
 
 app.get('/feedback/edit/:feedbackID', checkRole('Admin'), (req, res) => {
-    const sql = `
-        SELECT f.*, u.username AS customerName, s.serviceName,
-               a.appointmentDate, a.appointmentTime
-        FROM feedback f
-        INNER JOIN appointments a ON f.appointmentID = a.appointmentID
-        INNER JOIN users u ON a.userID = u.id
-        INNER JOIN services s ON a.serviceID = s.serviceID
-        WHERE f.feedbackID = ?
-        LIMIT 1
-    `;
-
-    db.query(sql, [req.params.feedbackID], (error, rows) => {
+    db.query(feedbackDetailsSql, [req.params.feedbackID], (error, rows) => {
         if (error) {
-            console.error('Feedback edit query error:', error.message);
+            logDatabaseError('Feedback edit lookup', error);
             return res.status(500).send('Unable to load feedback');
         }
 
@@ -1871,26 +2068,53 @@ app.get('/feedback/edit/:feedbackID', checkRole('Admin'), (req, res) => {
         res.render('feedback/editFeedback', {
             feedback: rows[0],
             error: null,
+            formData: rows[0],
+            customerEmail: '',
+            backUrl: '/feedback',
             user: req.session.user
         });
     });
 });
 
 app.post('/feedback/edit/:feedbackID', checkRole('Admin'), (req, res) => {
-    const { rating, comments } = req.body;
+    const validation = validateFeedbackInput(req.body.rating, req.body.comments);
+
+    if (validation.error) {
+        return db.query(feedbackDetailsSql, [req.params.feedbackID], (lookupError, rows) => {
+            if (lookupError) {
+                logDatabaseError('Feedback edit lookup', lookupError);
+                return res.status(500).send('Unable to load feedback');
+            }
+
+            if (rows.length === 0) {
+                return res.status(404).send('Feedback not found.');
+            }
+
+            return res.status(400).render('feedback/editFeedback', {
+                feedback: rows[0],
+                error: validation.error,
+                formData: req.body,
+                customerEmail: '',
+                backUrl: '/feedback',
+                user: req.session.user
+            });
+        });
+    }
+
     const sql = `
         UPDATE feedback
         SET rating = ?, comments = ?
         WHERE feedbackID = ?
     `;
-    const values = [rating, comments || null, req.params.feedbackID];
+    const values = [validation.rating, validation.comments, req.params.feedbackID];
 
     db.query(sql, values, (error) => {
         if (error) {
-            console.error('Update feedback error:', error.message);
+            logDatabaseError('Feedback update', error);
             return res.status(500).send('Unable to update feedback');
         }
 
+        req.flash('success', 'Feedback updated successfully.');
         res.redirect('/feedback');
     });
 });
@@ -1904,29 +2128,23 @@ app.post('/feedback/delete/:feedbackID', checkRole('Admin'), (req, res) => {
 
     db.query(sql, values, (error) => {
         if (error) {
-            console.error('Delete feedback error:', error.message);
+            logDatabaseError('Feedback admin delete', error);
             return res.status(500).send('Unable to delete feedback');
         }
 
+        req.flash('success', 'Feedback deleted successfully.');
         res.redirect('/feedback');
     });
 });
 
-app.get('/feedback/:feedbackID', checkRole('Admin'), (req, res) => {
-    const sql = `
-        SELECT f.*, u.username AS customerName, s.serviceName,
-               a.appointmentDate, a.appointmentTime
-        FROM feedback f
-        INNER JOIN appointments a ON f.appointmentID = a.appointmentID
-        INNER JOIN users u ON a.userID = u.id
-        INNER JOIN services s ON a.serviceID = s.serviceID
-        WHERE f.feedbackID = ?
-        LIMIT 1
-    `;
+app.get('/feedback/:feedbackID/edit', (req, res) => {
+    if (req.session.user && normalizeRole(req.session.user.role) === 'Admin') {
+        return res.redirect(`/feedback/edit/${req.params.feedbackID}`);
+    }
 
-    db.query(sql, [req.params.feedbackID], (error, rows) => {
+    db.query(feedbackDetailsSql, [req.params.feedbackID], (error, rows) => {
         if (error) {
-            console.error('Feedback details query error:', error.message);
+            logDatabaseError('Feedback customer edit lookup', error);
             return res.status(500).send('Unable to load feedback');
         }
 
@@ -1934,19 +2152,154 @@ app.get('/feedback/:feedbackID', checkRole('Admin'), (req, res) => {
             return res.status(404).send('Feedback not found.');
         }
 
-        res.render('feedback/feedbackDetails', {
-            feedback: rows[0],
-            user: req.session.user
+        const feedback = rows[0];
+
+        if (!canAccessCustomerFeedback(req, feedback)) {
+            req.flash('error', 'You are not authorised to edit this feedback.');
+            return res.redirect('/booking-details');
+        }
+
+        return res.render('feedback/editFeedback', {
+            feedback,
+            error: null,
+            formData: feedback,
+            customerEmail: getFeedbackEmail(req),
+            backUrl: `/feedback/${feedback.feedbackID}${feedbackAccessQuery(req)}`,
+            user: req.session.user || null
         });
     });
 });
 
-app.get('/feedback/:feedbackID/edit', (req, res) => {
-    res.redirect(`/feedback/edit/${req.params.feedbackID}`);
+app.post('/feedback/:feedbackID/edit', (req, res) => {
+    if (req.session.user && normalizeRole(req.session.user.role) === 'Admin') {
+        return res.redirect(307, `/feedback/edit/${req.params.feedbackID}`);
+    }
+
+    db.query(feedbackDetailsSql, [req.params.feedbackID], (lookupError, rows) => {
+        if (lookupError) {
+            logDatabaseError('Feedback customer edit lookup', lookupError);
+            return res.status(500).send('Unable to update feedback');
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).send('Feedback not found.');
+        }
+
+        const feedback = rows[0];
+
+        if (!canAccessCustomerFeedback(req, feedback)) {
+            req.flash('error', 'You are not authorised to edit this feedback.');
+            return res.redirect('/booking-details');
+        }
+
+        const validation = validateFeedbackInput(req.body.rating, req.body.comments);
+
+        if (validation.error) {
+            return res.status(400).render('feedback/editFeedback', {
+                feedback,
+                error: validation.error,
+                formData: req.body,
+                customerEmail: getFeedbackEmail(req),
+                backUrl: `/feedback/${feedback.feedbackID}${feedbackAccessQuery(req)}`,
+                user: req.session.user || null
+            });
+        }
+
+        const sql = `
+            UPDATE feedback
+            SET rating = ?, comments = ?
+            WHERE feedbackID = ?
+            AND userID = ?
+        `;
+
+        db.query(
+            sql,
+            [validation.rating, validation.comments, feedback.feedbackID, feedback.appointmentUserID],
+            (updateError) => {
+                if (updateError) {
+                    logDatabaseError('Feedback customer update', updateError);
+                    return res.status(500).send('Unable to update feedback');
+                }
+
+                req.flash('success', 'Feedback updated successfully.');
+                return res.redirect(`/feedback/${feedback.feedbackID}${feedbackAccessQuery(req)}`);
+            }
+        );
+    });
 });
 
 app.post('/feedback/:feedbackID/delete', (req, res) => {
-    res.redirect(307, `/feedback/delete/${req.params.feedbackID}`);
+    if (req.session.user && normalizeRole(req.session.user.role) === 'Admin') {
+        return res.redirect(307, `/feedback/delete/${req.params.feedbackID}`);
+    }
+
+    if (req.session.user && normalizeRole(req.session.user.role) === 'Staff') {
+        return res.status(403).send('You do not have permission to delete feedback.');
+    }
+
+    db.query(feedbackDetailsSql, [req.params.feedbackID], (lookupError, rows) => {
+        if (lookupError) {
+            logDatabaseError('Feedback customer delete lookup', lookupError);
+            return res.status(500).send('Unable to delete feedback');
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).send('Feedback not found.');
+        }
+
+        const feedback = rows[0];
+
+        if (!canAccessCustomerFeedback(req, feedback)) {
+            req.flash('error', 'You are not authorised to delete this feedback.');
+            return res.redirect('/booking-details');
+        }
+
+        const sql = `
+            DELETE FROM feedback
+            WHERE feedbackID = ?
+            AND userID = ?
+        `;
+
+        db.query(sql, [feedback.feedbackID, feedback.appointmentUserID], (deleteError) => {
+            if (deleteError) {
+                logDatabaseError('Feedback customer delete', deleteError);
+                return res.status(500).send('Unable to delete feedback');
+            }
+
+            req.flash('success', 'Feedback deleted successfully.');
+            return res.redirect(`/appointments/${feedback.appointmentID}${feedbackAccessQuery(req)}`);
+        });
+    });
+});
+
+app.get('/feedback/:feedbackID', (req, res) => {
+    db.query(feedbackDetailsSql, [req.params.feedbackID], (error, rows) => {
+        if (error) {
+            logDatabaseError('Feedback details lookup', error);
+            return res.status(500).send('Unable to load feedback');
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).send('Feedback not found.');
+        }
+
+        const feedback = rows[0];
+        const role = req.session.user ? normalizeRole(req.session.user.role) : '';
+
+        if (role !== 'Admin' && !canAccessCustomerFeedback(req, feedback)) {
+            req.flash('error', 'You are not authorised to view this feedback.');
+            return res.redirect('/booking-details');
+        }
+
+        res.render('feedback/feedbackDetails', {
+            feedback,
+            success: res.locals.success,
+            error: res.locals.error,
+            customerEmail: getFeedbackEmail(req),
+            isAdminView: role === 'Admin',
+            user: req.session.user || null
+        });
+    });
 });
 
 app.get('/service-management', checkRole('Admin'), (req, res) => {

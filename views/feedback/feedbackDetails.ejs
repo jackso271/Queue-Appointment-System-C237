@@ -10,15 +10,106 @@
 <body class="bg-light">
 <%- include('../partials/navbar', { user }) %>
 
-<main class="container py-4">
-    <div class="bg-white border rounded p-4">
-        <h1 class="h3">Feedback Details</h1>
-        <p><strong>Customer:</strong> <%= feedback.customerName || 'Unknown customer' %></p>
-        <p><strong>Service:</strong> <%= feedback.serviceName || 'Unknown service' %></p>
-        <p><strong>Rating:</strong> <%= feedback.rating %> / 5</p>
-        <p><strong>Comments:</strong> <%= feedback.comments || 'No comments provided' %></p>
-        <a href="/feedback" class="btn btn-secondary">Back</a>
-    </div>
+<%
+    const queryEmail = customerEmail ? `?email=${encodeURIComponent(customerEmail)}` : '';
+    const submittedDate = feedback.submittedDate ? new Date(feedback.submittedDate) : null;
+    const submittedText = submittedDate && !Number.isNaN(submittedDate.getTime())
+        ? submittedDate.toLocaleString('en-SG')
+        : 'Not available';
+%>
+
+<main class="container py-4 py-lg-5">
+    <% if (success) { %>
+        <div class="alert alert-success"><%= success %></div>
+    <% } %>
+
+    <% if (error) { %>
+        <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+
+    <section class="bg-white border rounded-3 shadow-sm p-4 p-lg-5">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <div>
+                <p class="text-uppercase text-primary fw-semibold small mb-2">
+                    Feedback #<%= feedback.feedbackID %>
+                </p>
+                <h1 class="h3 mb-0">Feedback Details</h1>
+            </div>
+
+            <span class="badge text-bg-warning align-self-start fs-6">
+                <%= feedback.rating %> / 5
+            </span>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <h2 class="h5">Appointment</h2>
+                <dl class="row mb-0">
+                    <dt class="col-5">Booking ID</dt>
+                    <dd class="col-7"><%= feedback.appointmentID %></dd>
+
+                    <dt class="col-5">Customer</dt>
+                    <dd class="col-7"><%= feedback.customerName || 'Unknown customer' %></dd>
+
+                    <% if (isAdminView) { %>
+                        <dt class="col-5">Email</dt>
+                        <dd class="col-7"><%= feedback.customerEmail || 'Not available' %></dd>
+                    <% } %>
+
+                    <dt class="col-5">Service</dt>
+                    <dd class="col-7"><%= feedback.serviceName || 'Unknown service' %></dd>
+
+                    <dt class="col-5">Date</dt>
+                    <dd class="col-7"><%= feedback.appointmentDate %></dd>
+
+                    <dt class="col-5">Time</dt>
+                    <dd class="col-7"><%= feedback.appointmentTime %></dd>
+
+                    <dt class="col-5">Queue</dt>
+                    <dd class="col-7">
+                        <% if (feedback.queueNumber) { %>
+                            Q<%= String(feedback.queueNumber).padStart(3, '0') %>
+                        <% } else { %>
+                            Not assigned
+                        <% } %>
+                    </dd>
+                </dl>
+            </div>
+
+            <div class="col-lg-7">
+                <h2 class="h5">Comments</h2>
+                <p class="border rounded-3 p-3 bg-light"><%= feedback.comments || 'No comments provided' %></p>
+                <p class="text-muted small mb-0">Submitted <%= submittedText %></p>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <% if (isAdminView) { %>
+                <a href="/feedback" class="btn btn-secondary">Back</a>
+                <a href="/feedback/edit/<%= feedback.feedbackID %>" class="btn btn-outline-primary">Edit</a>
+                <form
+                    action="/feedback/delete/<%= feedback.feedbackID %>"
+                    method="POST"
+                    onsubmit="return confirm('Delete this feedback?');"
+                >
+                    <button type="submit" class="btn btn-outline-danger">Delete</button>
+                </form>
+            <% } else { %>
+                <a href="/appointments/<%= feedback.appointmentID %><%= queryEmail %>" class="btn btn-secondary">Back to Booking</a>
+                <a href="/feedback/<%= feedback.feedbackID %>/edit<%= queryEmail %>" class="btn btn-outline-primary">Edit</a>
+                <form
+                    action="/feedback/<%= feedback.feedbackID %>/delete<%= queryEmail %>"
+                    method="POST"
+                    onsubmit="return confirm('Delete this feedback?');"
+                >
+                    <% if (customerEmail) { %>
+                        <input type="hidden" name="customerEmail" value="<%= customerEmail %>">
+                    <% } %>
+                    <button type="submit" class="btn btn-outline-danger">Delete</button>
+                </form>
+            <% } %>
+        </div>
+    </section>
 </main>
 </body>
 </html>
