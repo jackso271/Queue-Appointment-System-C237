@@ -24,8 +24,10 @@
     "connect-flash": "^0.1.1",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
+    "expree": "^2.1.0",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "mysql": "^2.18.1",
     "mysql2": "^3.22.6"
   }
 }
