@@ -10,6 +10,16 @@
 <body class="bg-light">
 <%- include('partials/navbar', { user }) %>
 
+<%
+    const activeAnnouncements = Array.isArray(announcements) ? announcements : [];
+    const formatAnnouncementDate = (value) => {
+        const date = value ? new Date(value) : null;
+        return date && !Number.isNaN(date.getTime())
+            ? date.toLocaleDateString('en-SG')
+            : 'Not set';
+    };
+%>
+
 <main class="container py-5">
     <section class="bg-white border rounded p-4">
         <h1 class="h2">QueueEase</h1>
@@ -19,6 +29,32 @@
             <a href="/booking-details" class="btn btn-outline-primary">Check Booking</a>
             <a href="/queue/status" class="btn btn-outline-secondary">Queue Status</a>
         </div>
+    </section>
+
+    <section class="announcement-section mt-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+            <div>
+                <p class="page-kicker mb-1">Clinic Updates</p>
+                <h2 class="h4 mb-0">Clinic Announcements</h2>
+            </div>
+        </div>
+
+        <% if (activeAnnouncements.length === 0) { %>
+            <div class="announcement-empty">No current clinic announcements.</div>
+        <% } else { %>
+            <div class="announcement-grid">
+                <% activeAnnouncements.forEach(item => { %>
+                    <article class="announcement-card">
+                        <h3 class="announcement-title"><%= item.title %></h3>
+                        <p class="announcement-description"><%= item.description %></p>
+                        <p class="announcement-meta">
+                            Valid <%= formatAnnouncementDate(item.startDate) %>
+                            to <%= formatAnnouncementDate(item.endDate) %>
+                        </p>
+                    </article>
+                <% }) %>
+            </div>
+        <% } %>
     </section>
 </main>
 </body>

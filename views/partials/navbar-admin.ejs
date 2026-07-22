@@ -1,6 +1,7 @@
 <%
     const isActive = (path) => currentPath === path;
     const isUsersActive = currentPath === '/admin/users' || currentPath === '/admin/users/create';
+    const isAnnouncementsActive = currentPath && currentPath.startsWith('/admin/announcements');
 %>
 <nav class="navbar navbar-expand-lg navbar-dark qe-navbar qe-navbar--admin">
     <div class="container">
@@ -21,6 +22,9 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link <%= isActive('/reports/operational') ? 'active' : '' %>" href="/reports/operational">Report</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <%= isAnnouncementsActive ? 'active' : '' %>" href="/admin/announcements">Announcements</a>
                 </li>
                 <li class="nav-item">
                     <form method="POST" action="/logout" class="d-inline">

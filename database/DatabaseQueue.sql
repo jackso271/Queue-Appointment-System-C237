@@ -154,3 +154,20 @@ CREATE TABLE IF NOT EXISTS feedback (
         ON UPDATE CASCADE
         ON DELETE SET NULL
 );
+
+-- Announcement Management table
+CREATE TABLE IF NOT EXISTS announcements (
+    announcementID INT NOT NULL AUTO_INCREMENT,
+    title VARCHAR(150) NOT NULL,
+    description TEXT NOT NULL,
+    startDate DATE NOT NULL,
+    endDate DATE NOT NULL,
+    status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (announcementID),
+    KEY idx_announcements_status_dates (status, startDate, endDate),
+    KEY idx_announcements_created (createdAt)
+);

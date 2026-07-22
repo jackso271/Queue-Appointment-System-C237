@@ -225,6 +225,39 @@ function formatDisplayTime(value) {
     return `${displayHours}:${minutes} ${suffix}`;
 }
 
+function formatDateInput(value) {
+    if (!value) {
+        return '';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return String(value).slice(0, 10);
+    }
+
+    return date.toISOString().slice(0, 10);
+}
+
+function loadActiveAnnouncements(callback) {
+    const sql = `
+        SELECT announcementID, title, description, startDate, endDate
+        FROM announcements
+        WHERE status = 'Active'
+        AND startDate <= CURDATE()
+        AND endDate >= CURDATE()
+        ORDER BY startDate DESC, createdAt DESC
+    `;
+
+    db.query(sql, (error, announcements) => {
+        if (error) {
+            logDatabaseError('Public announcements', error);
+            return callback([]);
+        }
+
+        callback(announcements || []);
+    });
+}
+
 function rememberPublicAppointment(req, appointmentID) {
     req.session.publicAppointments = req.session.publicAppointments || [];
 
@@ -248,8 +281,11 @@ function canViewPublicAppointment(req, row) {
 }
 
 app.get('/', (req, res) => {
-    res.render('home', {
-        user: req.session.user || null
+    loadActiveAnnouncements((announcements) => {
+        res.render('home', {
+            announcements,
+            user: req.session.user || null
+        });
     });
 });
 
@@ -551,6 +587,279 @@ function renderAdminDashboard(req, res) {
 
 app.get('/admin', requireAdmin, (req, res) => res.redirect('/admin/dashboard'));
 app.get('/admin/dashboard', requireAdmin, renderAdminDashboard);
+
+const ANNOUNCEMENT_STATUS_OPTIONS = ['Active', 'Inactive'];
+const ANNOUNCEMENT_TITLE_MAX_LENGTH = 150;
+
+function normalizeAnnouncementForm(body) {
+    return {
+        title: String(body.title || '').trim(),
+        description: String(body.description || '').trim(),
+        startDate: String(body.startDate || '').trim(),
+        endDate: String(body.endDate || '').trim(),
+        status: String(body.status || 'Active').trim()
+    };
+}
+
+function validateAnnouncement(formData) {
+    if (!formData.title) {
+        return 'Title is required.';
+    }
+
+    if (formData.title.length > ANNOUNCEMENT_TITLE_MAX_LENGTH) {
+        return `Title must be ${ANNOUNCEMENT_TITLE_MAX_LENGTH} characters or fewer.`;
+    }
+
+    if (!formData.description) {
+        return 'Description is required.';
+    }
+
+    if (!formData.startDate) {
+        return 'Start date is required.';
+    }
+
+    if (!formData.endDate) {
+        return 'End date is required.';
+    }
+
+    if (!ANNOUNCEMENT_STATUS_OPTIONS.includes(formData.status)) {
+        return 'Announcement status is invalid.';
+    }
+
+    const startDate = new Date(`${formData.startDate}T00:00:00`);
+    const endDate = new Date(`${formData.endDate}T00:00:00`);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        return 'Please enter valid announcement dates.';
+    }
+
+    if (endDate < startDate) {
+        return 'End date cannot be earlier than start date.';
+    }
+
+    return null;
+}
+
+function renderAnnouncementForm(req, res, statusCode, mode, formData, error = null) {
+    return res.status(statusCode).render('admin/announcement-form', {
+        mode,
+        formData,
+        statusOptions: ANNOUNCEMENT_STATUS_OPTIONS,
+        error,
+        success: res.locals.success,
+        user: req.session.user
+    });
+}
+
+app.get('/admin/announcements', requireAdmin, (req, res) => {
+    const sql = `
+        SELECT announcementID, title, description, startDate, endDate,
+               status, createdAt, updatedAt
+        FROM announcements
+        ORDER BY createdAt DESC, announcementID DESC
+    `;
+
+    db.query(sql, (error, announcements) => {
+        if (error) {
+            console.error('========== ADMIN ANNOUNCEMENTS ERROR ==========');
+            console.error('Code:', error.code);
+            console.error('Errno:', error.errno);
+            console.error('SQL State:', error.sqlState);
+            console.error('SQL Message:', error.sqlMessage || error.message);
+            console.error('Stack:', error.stack);
+            console.error('===============================================');
+            return res.status(500).send('Unable to load announcements');
+        }
+
+        res.render('admin/announcements', {
+            announcements,
+            success: res.locals.success,
+            error: res.locals.error,
+            user: req.session.user
+        });
+    });
+});
+
+app.get('/admin/announcements/create', requireAdmin, (req, res) => {
+    renderAnnouncementForm(req, res, 200, 'create', {
+        title: '',
+        description: '',
+        startDate: '',
+        endDate: '',
+        status: 'Active'
+    });
+});
+
+app.post('/admin/announcements/create', requireAdmin, (req, res) => {
+    const formData = normalizeAnnouncementForm(req.body);
+    const validationError = validateAnnouncement(formData);
+
+    if (validationError) {
+        return renderAnnouncementForm(req, res, 400, 'create', formData, validationError);
+    }
+
+    const sql = `
+        INSERT INTO announcements
+            (title, description, startDate, endDate, status)
+        VALUES
+            (?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+        sql,
+        [formData.title, formData.description, formData.startDate, formData.endDate, formData.status],
+        (error) => {
+            if (error) {
+                logDatabaseError('Announcement create', error);
+                return renderAnnouncementForm(req, res, 500, 'create', formData, 'Unable to save announcement.');
+            }
+
+            req.flash('success', 'Announcement created successfully.');
+            return res.redirect('/admin/announcements');
+        }
+    );
+});
+
+app.get('/admin/announcements/:announcementID/edit', requireAdmin, (req, res) => {
+    const sql = `
+        SELECT announcementID, title, description, startDate, endDate, status
+        FROM announcements
+        WHERE announcementID = ?
+        LIMIT 1
+    `;
+
+    db.query(sql, [req.params.announcementID], (error, rows) => {
+        if (error) {
+            logDatabaseError('Announcement edit lookup', error);
+            return res.status(500).send('Unable to load announcement');
+        }
+
+        if (rows.length === 0) {
+            req.flash('error', 'Announcement not found.');
+            return res.redirect('/admin/announcements');
+        }
+
+        const announcement = rows[0];
+        return renderAnnouncementForm(req, res, 200, 'edit', {
+            announcementID: announcement.announcementID,
+            title: announcement.title,
+            description: announcement.description,
+            startDate: formatDateInput(announcement.startDate),
+            endDate: formatDateInput(announcement.endDate),
+            status: announcement.status
+        });
+    });
+});
+
+app.post('/admin/announcements/:announcementID/edit', requireAdmin, (req, res) => {
+    const formData = {
+        announcementID: req.params.announcementID,
+        ...normalizeAnnouncementForm(req.body)
+    };
+    const validationError = validateAnnouncement(formData);
+
+    if (validationError) {
+        return renderAnnouncementForm(req, res, 400, 'edit', formData, validationError);
+    }
+
+    const existsSql = 'SELECT announcementID FROM announcements WHERE announcementID = ? LIMIT 1';
+
+    db.query(existsSql, [req.params.announcementID], (existsError, rows) => {
+        if (existsError) {
+            logDatabaseError('Announcement update lookup', existsError);
+            return res.status(500).send('Unable to save announcement');
+        }
+
+        if (rows.length === 0) {
+            req.flash('error', 'Announcement not found.');
+            return res.redirect('/admin/announcements');
+        }
+
+        const updateSql = `
+            UPDATE announcements
+            SET title = ?, description = ?, startDate = ?, endDate = ?, status = ?
+            WHERE announcementID = ?
+        `;
+
+        db.query(
+            updateSql,
+            [
+                formData.title,
+                formData.description,
+                formData.startDate,
+                formData.endDate,
+                formData.status,
+                req.params.announcementID
+            ],
+            (updateError) => {
+                if (updateError) {
+                    logDatabaseError('Announcement update', updateError);
+                    return renderAnnouncementForm(req, res, 500, 'edit', formData, 'Unable to save announcement.');
+                }
+
+                req.flash('success', 'Announcement updated successfully.');
+                return res.redirect('/admin/announcements');
+            }
+        );
+    });
+});
+
+app.post('/admin/announcements/:announcementID/status', requireAdmin, (req, res) => {
+    const status = String(req.body.status || '').trim();
+
+    if (!ANNOUNCEMENT_STATUS_OPTIONS.includes(status)) {
+        req.flash('error', 'Announcement status is invalid.');
+        return res.redirect('/admin/announcements');
+    }
+
+    const sql = 'UPDATE announcements SET status = ? WHERE announcementID = ?';
+
+    db.query(sql, [status, req.params.announcementID], (error, result) => {
+        if (error) {
+            logDatabaseError('Announcement status update', error);
+            req.flash('error', 'Unable to save announcement.');
+            return res.redirect('/admin/announcements');
+        }
+
+        if (result.affectedRows === 0) {
+            req.flash('error', 'Announcement not found.');
+            return res.redirect('/admin/announcements');
+        }
+
+        req.flash('success', 'Announcement updated successfully.');
+        return res.redirect('/admin/announcements');
+    });
+});
+
+app.post('/admin/announcements/:announcementID/delete', requireAdmin, (req, res) => {
+    const existsSql = 'SELECT announcementID FROM announcements WHERE announcementID = ? LIMIT 1';
+
+    db.query(existsSql, [req.params.announcementID], (existsError, rows) => {
+        if (existsError) {
+            logDatabaseError('Announcement delete lookup', existsError);
+            req.flash('error', 'Unable to delete announcement.');
+            return res.redirect('/admin/announcements');
+        }
+
+        if (rows.length === 0) {
+            req.flash('error', 'Announcement not found.');
+            return res.redirect('/admin/announcements');
+        }
+
+        const deleteSql = 'DELETE FROM announcements WHERE announcementID = ?';
+
+        db.query(deleteSql, [req.params.announcementID], (deleteError) => {
+            if (deleteError) {
+                logDatabaseError('Announcement delete', deleteError);
+                req.flash('error', 'Unable to delete announcement.');
+                return res.redirect('/admin/announcements');
+            }
+
+            req.flash('success', 'Announcement deleted successfully.');
+            return res.redirect('/admin/announcements');
+        });
+    });
+});
 
 app.get('/admin/users', checkRole('Admin'), (req, res) => {
     const sql = `
@@ -1196,11 +1505,14 @@ app.get('/appointments/book', (req, res) => {
             return res.status(500).send('Unable to load booking form');
         }
 
-        res.render('appointments/book', {
-            services,
-            formData: {},
-            error: null,
-            user: req.session.user || null
+        loadActiveAnnouncements((announcements) => {
+            res.render('appointments/book', {
+                services,
+                announcements,
+                formData: {},
+                error: null,
+                user: req.session.user || null
+            });
         });
     });
 });
@@ -1225,11 +1537,14 @@ app.post('/appointments/book', (req, res) => {
                 return res.status(500).send('Unable to load booking form');
             }
 
-            return res.status(400).render('appointments/book', {
-                services,
-                formData: req.body,
-                error: 'Please fill in all required booking fields.',
-                user: req.session.user || null
+            return loadActiveAnnouncements((announcements) => {
+                return res.status(400).render('appointments/book', {
+                    services,
+                    announcements,
+                    formData: req.body,
+                    error: 'Please fill in all required booking fields.',
+                    user: req.session.user || null
+                });
             });
         });
     }

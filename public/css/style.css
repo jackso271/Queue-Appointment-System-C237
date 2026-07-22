@@ -454,6 +454,12 @@ body {
     border: 1px solid #f1aeb5;
 }
 
+.status-badge--expired {
+    color: #7c2d12;
+    background: #ffedd5;
+    border: 1px solid #fdba74;
+}
+
 .user-actions {
     display: flex;
     flex-wrap: wrap;
@@ -502,6 +508,92 @@ body {
     margin-top: 1.25rem;
     padding-top: 1rem;
     border-top: 1px solid var(--qe-border);
+}
+
+.announcement-section {
+    padding: 1.25rem;
+    background: #ffffff;
+    border: 1px solid var(--qe-border);
+    border-radius: 1rem;
+    box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.06);
+}
+
+.booking-announcements {
+    margin-bottom: 1.25rem;
+}
+
+.announcement-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.announcement-card {
+    padding: 1rem;
+    background: #f8fbff;
+    border: 1px solid #dbeafe;
+    border-radius: 0.75rem;
+}
+
+.announcement-title {
+    margin: 0 0 0.4rem;
+    color: #102a43;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.announcement-description {
+    margin: 0;
+    color: #3f5067;
+    overflow-wrap: anywhere;
+}
+
+.announcement-meta {
+    margin: 0.75rem 0 0;
+    color: var(--qe-muted);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.announcement-empty {
+    padding: 1rem;
+    color: var(--qe-muted);
+    background: #f8fbff;
+    border: 1px dashed #bdd7f4;
+    border-radius: 0.75rem;
+}
+
+.announcement-table {
+    min-width: 980px;
+}
+
+.announcement-table thead th {
+    padding: 0.9rem 1rem;
+    color: #52657a;
+    background: #f4f8fc;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.announcement-table tbody td {
+    padding: 1rem;
+    vertical-align: top;
+}
+
+.announcement-table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.announcement-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 17rem;
+}
+
+.announcement-actions form {
+    margin: 0;
 }
 
 .queue-hero {
@@ -803,6 +895,16 @@ body {
 
     .user-update-form {
         grid-template-columns: 1fr;
+    }
+
+    .announcement-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .announcement-actions {
+        align-items: stretch;
+        flex-direction: column;
+        min-width: 12rem;
     }
 
     .summary-grid {
